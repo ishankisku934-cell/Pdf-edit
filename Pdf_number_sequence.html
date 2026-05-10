@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Page Matrix Calculator</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 20px 24px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    }
+    h1 {
+      font-size: 22px;
+      margin-bottom: 12px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    label {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+    input[type="number"] {
+      width: 100%;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+      font-size: 14px;
+    }
+    button {
+      margin-top: 4px;
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      background: #2563eb;
+      color: white;
+    }
+    button:hover {
+      opacity: 0.9;
+    }
+    .result-box {
+      margin-top: 16px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      background: #f0f4ff;
+      font-size: 14px;
+    }
+    .text-output {
+      background: #fff7e6;
+      padding: 15px;
+      margin-top: 16px;
+      border-radius: 8px;
+      font-size: 15px;
+      white-space: pre-wrap;
+      font-family: Consolas, monospace;
+      border: 1px solid #ffd28a;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+      font-size: 13px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 6px 8px;
+      text-align: center;
+    }
+    th {
+      background: #f3f3f3;
+    }
+    .error {
+      color: #b91c1c;
+      margin-top: 8px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Page Matrix Number Sequence Calculator</h1>
+
+    <div class="grid">
+      <div>
+        <label>M (Columns)</label>
+        <input type="number" id="rows" min="1" step="1" />
+      </div>
+      <div>
+        <label>N (Raws)</label>
+        <input type="number" id="cols" min="1" step="1" />
+      </div>
+      <div>
+        <label>T (Total Pages)</label>
+        <input type="number" id="total" min="1" step="1" />
+      </div>
+    </div>
+
+    <button onclick="calculate()">Calculate</button>
+    <div id="error" class="error"></div>
+    <div id="summary" class="result-box" style="display:none;"></div>
+    <div id="textOutput" class="text-output" style="display:none;"></div>
+    <div id="table-wrapper"></div>
+  </div>
+
+<script>
+function calculate() {
+
+  const errEl = document.getElementById("error");
+  const summaryEl = document.getElementById("summary");
+  const tableWrapper = document.getElementById("table-wrapper");
+  const textOutput = document.getElementById("textOutput");
+
+  errEl.textContent = "";
+  textOutput.style.display = "none";
+  tableWrapper.innerHTML = "";
+
+  const M = Number(document.getElementById("rows").value);
+  const N = Number(document.getElementById("cols").value);
+  const T = Number(document.getElementById("total").value);
+
+  if (M <= 0 || N <= 0 || T <= 0) {
+    errEl.textContent = "Enter valid positive numbers.";
+    return;
+  }
+
+  const copies = M * N;
+  const raw = T / copies;
+  let G = Number.isInteger(raw) ? raw : Math.floor(raw) + 1;
+
+  summaryEl.style.display = "block";
+  summaryEl.innerHTML =
+    `M=${M}, N=${N}, T=${T}<br>` +
+    `Copies=${copies}, G=${G}`;
+
+  let outputText = "";
+  const matrixRows = [];
+  const blockSize = copies / N;
+
+  for (let p = 1; p <= G; p++) {
+    const row = [];
+
+    for (let k = 1; k <= copies; k++) {
+      const v = p + (k - 1) * G;
+      row.push(v > T ? (T + 1) : v);
+    }
+
+    // *** EVEN ROW FLIPPING LOGIC ***
+    if (p % 2 === 0) {
+      const part1 = row.slice(0, blockSize).reverse();
+      const part2 = row.slice(blockSize).reverse();
+      const flipped = [...part1, ...part2];
+      matrixRows.push(flipped);
+    } else {
+      matrixRows.push(row);
+    }
+  }
+
+  matrixRows.forEach(r => {
+    outputText += r.join(", ") + ",\n";
+  });
+
+  textOutput.style.display = "block";
+  textOutput.textContent = outputText;
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Dark Mode & AMOLED Converter</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #121212;
+            --surface-color: #1e1e1e;
+            --primary-color: #03dac6;
+            --text-color: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--surface-color);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 { margin-top: 0; }
+        p { color: #aaa; font-size: 0.9em; }
+
+        /* Input styling */
+        input[type="file"] {
+            display: none;
+        }
+
+        .custom-file-upload {
+            border: 2px dashed #444;
+            display: inline-block;
+            padding: 20px 40px;
+            cursor: pointer;
+            border-radius: 8px;
+            width: 80%;
+            margin-bottom: 20px;
+            transition: 0.3s;
+        }
+
+        .custom-file-upload:hover {
+            border-color: var(--primary-color);
+            background-color: #252525;
+        }
+
+        /* Buttons */
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        button {
+            background-color: #333;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+
+        button:hover { background-color: #444; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .btn-download {
+            background-color: var(--primary-color);
+            color: #000;
+            display: none; /* Hidden by default */
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        /* Progress Bar */
+        #status-container {
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            background-color: #333;
+            border-radius: 4px;
+            height: 10px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: var(--primary-color);
+            width: 0%;
+            transition: width 0.2s;
+        }
+
+        .note {
+            margin-top: 30px;
+            font-size: 0.8rem;
+            color: #666;
+            border-top: 1px solid #333;
+            padding-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>PDF Dark Converter</h1>
+        <p>Upload a PDF to invert colors, apply night mode, or convert to AMOLED black.</p>
+
+        <label class="custom-file-upload">
+            <input type="file" id="pdfInput" accept="application/pdf" />
+            <span id="fileName">📂 Click to Select PDF</span>
+        </label>
+
+        <div class="controls">
+            <button onclick="startConversion('invert')">Invert</button>
+            <button onclick="startConversion('night')">Night Mode</button>
+            <button onclick="startConversion('amoled')">AMOLED Black</button>
+        </div>
+
+        <div id="status-container">
+            <div id="status-text">Processing...</div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+        </div>
+
+        <button id="downloadBtn" class="btn-download" onclick="downloadPDF()">⬇ Download Converted PDF</button>
+
+        <p class="note">Note: Output keeps original page size and ratio.</p>
+    </div>
+
+    <script>
+        // Setup PDF.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        const { jsPDF } = window.jspdf;
+        let selectedFile = null;
+        let generatedPdfBlob = null;
+        let originalFileName = "document";
+
+        document.getElementById('pdfInput').addEventListener('change', function(e) {
+            selectedFile = e.target.files[0];
+            if (selectedFile) {
+                document.getElementById('fileName').innerText = "📄 " + selectedFile.name;
+                originalFileName = selectedFile.name.replace('.pdf', '');
+                document.getElementById('downloadBtn').style.display = 'none';
+                document.getElementById('status-container').style.display = 'none';
+            }
+        });
+
+        async function startConversion(mode) {
+            if (!selectedFile) {
+                alert("Please select a PDF file first.");
+                return;
+            }
+
+            const statusContainer = document.getElementById('status-container');
+            const statusText = document.getElementById('status-text');
+            const progressFill = document.getElementById('progress-fill');
+            const downloadBtn = document.getElementById('downloadBtn');
+            
+            statusContainer.style.display = 'block';
+            downloadBtn.style.display = 'none';
+            progressFill.style.width = '0%';
+
+            try {
+                const arrayBuffer = await selectedFile.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+                const totalPages = pdf.numPages;
+
+                // Initialize newPdf as null, we will create it based on the first page dimensions
+                let newPdf = null;
+                
+                for (let i = 1; i <= totalPages; i++) {
+                    statusText.innerText = `Processing page ${i} of ${totalPages}...`;
+                    progressFill.style.width = `${(i / totalPages) * 100}%`;
+
+                    const page = await pdf.getPage(i);
+                    // Scale 1.5 maintains good quality. 
+                    // To keep exact original size matching, we treat canvas pixels as PDF units.
+                    const viewport = page.getViewport({ scale: 1.5 });
+                    
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+
+                    await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+
+                    // Apply Color Filter
+                    processCanvasColors(ctx, canvas.width, canvas.height, mode);
+
+                    const imgData = canvas.toDataURL('image/jpeg', 0.85);
+                    
+                    // --- FIXED LOGIC START ---
+                    // Determine orientation and size for this specific page
+                    const imgWidth = viewport.width;
+                    const imgHeight = viewport.height;
+                    const orientation = imgWidth > imgHeight ? 'l' : 'p';
+
+                    if (i === 1) {
+                        // Create the PDF with the dimensions of the FIRST page
+                        newPdf = new jsPDF({
+                            orientation: orientation,
+                            unit: 'px',
+                            format: [imgWidth, imgHeight]
+                        });
+                    } else {
+                        // For subsequent pages, add a page with its own specific dimensions
+                        newPdf.addPage([imgWidth, imgHeight], orientation);
+                    }
+
+                    // Add image to cover the exact page size
+                    newPdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
+                    // --- FIXED LOGIC END ---
+                }
+
+                statusText.innerText = "Processing Complete!";
+                generatedPdfBlob = newPdf.output('blob');
+                downloadBtn.style.display = 'inline-block';
+
+            } catch (error) {
+                console.error(error);
+                statusText.innerText = "Error: " + error.message;
+            }
+        }
+
+        function processCanvasColors(ctx, width, height, mode) {
+            const imageData = ctx.getImageData(0, 0, width, height);
+            const data = imageData.data;
+
+            for (let i = 0; i < data.length; i += 4) {
+                let r = data[i];
+                let g = data[i + 1];
+                let b = data[i + 2];
+
+                if (mode === 'invert') {
+                    data[i] = 255 - r;
+                    data[i+1] = 255 - g;
+                    data[i+2] = 255 - b;
+                } 
+                else if (mode === 'night') {
+                    r = 255 - r;
+                    g = 255 - g;
+                    b = 255 - b;
+                    data[i] = r * 0.9;
+                    data[i+1] = g * 0.8;
+                    data[i+2] = b * 0.6;
+                }
+                else if (mode === 'amoled') {
+                    let brightness = (r + g + b) / 3;
+                    if (brightness > 200) {
+                        data[i] = 0;
+                        data[i+1] = 0;
+                        data[i+2] = 0;
+                    } else {
+                        data[i] = 255;
+                        data[i+1] = 255;
+                        data[i+2] = 255;
+                    }
+                }
+            }
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        function downloadPDF() {
+            if (!generatedPdfBlob) return;
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(generatedPdfBlob);
+            link.download = originalFileName + "_dark.pdf";
+            link.click();
+        }
+    </script>
+</body>
+</html>
