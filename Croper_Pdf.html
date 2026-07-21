@@ -2,331 +2,637 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crop PDF - Local Tool</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Professional PDF Cropper (Optimized)</title>
     
-    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <!-- External Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 
     <style>
-        /* --- RESET & BASICS --- */
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg-color: #e5e7eb;
+            --sidebar-bg: #ffffff;
+            --text-main: #1f2937;
+            --accent-red: #da291c;
+            --overlay-dark: rgba(0, 0, 0, 0.75);
+            --crop-border: #ffffff;
+            --ui-font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            --gap: 20px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            font-family: 'Segoe UI', Helvetica, Arial, sans-serif;
-            background-color: #f3f0ec;
-            color: #333;
+            font-family: var(--ui-font);
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            height: 100vh;
             display: flex;
             flex-direction: column;
-            height: 100vh;
-            overflow: hidden; 
+            overflow: hidden;
+            overscroll-behavior-y: none;
         }
 
-        /* --- NAVBAR --- */
-        .navbar {
-            background-color: white;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            padding: 15px 40px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            z-index: 10;
-        }
-        .logo { font-weight: 800; font-size: 1.5rem; color: #333; }
-        .logo span { color: #e5322d; }
-
-        /* --- TOOLBAR --- */
         .toolbar {
-            background-color: #333;
-            color: white;
-            padding: 10px 20px;
+            height: 60px;
+            background: var(--sidebar-bg);
+            border-bottom: 1px solid #d1d5db;
             display: flex;
-            justify-content: center;
-            gap: 20px;
             align-items: center;
+            padding: 0 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            z-index: 100;
+            justify-content: space-between;
         }
-        .btn {
-            padding: 8px 20px;
-            border-radius: 4px;
-            border: none;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 0.9rem;
-        }
-        .btn-red { background-color: #e5322d; color: white; }
-        .btn-red:hover { background-color: #d62c27; }
-        
-        .btn-secondary { background-color: #555; color: white; }
-        .btn-secondary:hover { background-color: #666; }
 
-        /* --- MAIN WORKSPACE --- */
+        .upload-btn {
+            background: #2563eb;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            border: none;
+            transition: background 0.2s;
+        }
+
+        .upload-btn:hover { background: #1d4ed8; }
+        input[type="file"] { display: none; }
+
+        /* True Virtualization Container */
         .workspace {
-            flex: 1;
             display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            overflow: auto;
-            padding: 40px;
-            background-color: #525659;
+            flex: 1;
+            overflow: hidden;
             position: relative;
         }
 
-        /* --- UPLOAD SCREEN --- */
-        .upload-screen {
+        .viewport {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: relative;
+            background-color: var(--bg-color);
+        }
+
+        .scroll-spacer {
+            width: 1px;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        /* Absolute positioned virtual pages with Strict Containment for Performance */
+        .pdf-page-container {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            will-change: transform;
+            contain: strict; /* Critical for smooth scrolling */
+            overflow: hidden;
+        }
+
+        /* Loading Skeleton Animation */
+        .loading-skeleton {
+            background: #f3f4f6;
+            background-image: linear-gradient(90deg, #f3f4f6 0px, #e5e7eb 40px, #f3f4f6 80px);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Crop UI */
+        .crop-overlay-container {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: #f3f0ec;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 20;
-        }
-        .upload-btn {
-            background-color: #e5322d;
-            color: white;
-            font-size: 1.5rem;
-            font-weight: 700;
-            padding: 25px 60px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(229, 50, 45, 0.3);
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 10;
         }
 
-        /* --- CROPPER CONTAINER --- */
-        .canvas-wrapper {
-            position: relative;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
-        }
-        
-        canvas { display: block; background: white; }
-
-        /* The Resize/Crop Box */
         .crop-box {
             position: absolute;
-            top: 50px; left: 50px;
-            width: 300px; height: 300px;
-            border: 2px solid #2980b9;
-            background-color: rgba(52, 152, 219, 0.3);
+            border: 2px solid var(--crop-border);
+            box-shadow: 0 0 0 9999px var(--overlay-dark);
+            pointer-events: auto;
             cursor: move;
-            resize: both; 
-            overflow: hidden;
-            min-width: 50px; min-height: 50px;
-            max-width: 100%; max-height: 100%;
+            touch-action: none; 
         }
 
-        .crop-handle-label {
+        .handle {
             position: absolute;
-            bottom: 5px; right: 5px;
-            font-size: 10px;
-            color: white;
-            background: #2980b9;
-            padding: 2px 5px;
-            pointer-events: none;
+            width: 24px;
+            height: 24px;
+            background: var(--crop-border);
+            border-radius: 50%;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            transform: translate(-50%, -50%);
+            z-index: 20;
         }
-        
-        .hidden { display: none !important; }
 
+        .handle.tl { top: 0; left: 0; cursor: nwse-resize; }
+        .handle.tr { top: 0; left: 100%; cursor: nesw-resize; }
+        .handle.bl { top: 100%; left: 0; cursor: nesw-resize; }
+        .handle.br { top: 100%; left: 100%; cursor: nwse-resize; }
+
+        .fab-crop {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            background: var(--accent-red);
+            color: white;
+            padding: 16px 32px;
+            border-radius: 30px;
+            font-size: 18px;
+            font-weight: bold;
+            border: none;
+            box-shadow: 0 4px 15px rgba(218, 41, 28, 0.4);
+            cursor: pointer;
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            transition: transform 0.2s;
+        }
+
+        .fab-crop:active { transform: scale(0.95); }
+
+        .loader {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255,255,255,0.9);
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            font-weight: bold;
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .fab-crop {
+                bottom: 20px;
+                right: 50%;
+                transform: translateX(50%);
+                width: 90%;
+                justify-content: center;
+            }
+            .fab-crop:active { transform: translateX(50%) scale(0.95); }
+        }
     </style>
 </head>
 <body>
 
-    <nav class="navbar">
-        <div class="logo">Crop <span>PDF</span></div>
-        <div style="font-size: 0.9rem; color: #666;">Local Secure Tool</div>
-    </nav>
-
-    <div class="toolbar hidden" id="toolbar">
-        <span>Adjust the blue box to define the crop area.</span>
-        <button class="btn btn-secondary" onclick="resetApp()">Cancel</button>
-        <button class="btn btn-red" id="cropBtn">Crop PDF</button>
+    <div class="toolbar">
+        <label class="upload-btn">
+            Open PDF
+            <input type="file" id="fileInput" accept="application/pdf">
+        </label>
+        <div id="fileInfo" style="font-size: 14px; font-weight: 600;"></div>
     </div>
 
     <div class="workspace">
-        <div class="upload-screen" id="uploadScreen">
-            <h1 style="margin-bottom: 20px; color:#333;">Select PDF to Crop</h1>
-            <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Select PDF File</button>
-            <p style="margin-top:15px; color:#666;">This applies the crop to <b>ALL</b> pages.</p>
-            <input type="file" id="fileInput" accept=".pdf" style="display: none;">
+        <div class="viewport" id="viewport">
+            <div class="scroll-spacer" id="scrollSpacer"></div>
+            <!-- Pages will be absolutely positioned here via JS -->
         </div>
-
-        <div class="canvas-wrapper hidden" id="canvasWrapper">
-            <canvas id="pdfRenderer"></canvas>
-            <div class="crop-box" id="cropBox">
-                <div class="crop-handle-label">↘ Resize</div>
-            </div>
-        </div>
+        
+        <button class="fab-crop" id="exportBtn">
+            Crop PDF 
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 16 16 12 12 8"></polyline><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+        </button>
     </div>
 
-<script>
-    // --- SETUP PDF.JS WORKER ---
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    <div class="loader" id="loader"><div id="loaderText">Processing PDF...</div></div>
 
-    // --- VARIABLES ---
-    const fileInput = document.getElementById('fileInput');
-    const uploadScreen = document.getElementById('uploadScreen');
-    const canvasWrapper = document.getElementById('canvasWrapper');
-    const toolbar = document.getElementById('toolbar');
-    const canvas = document.getElementById('pdfRenderer');
-    const cropBox = document.getElementById('cropBox');
-    const cropBtn = document.getElementById('cropBtn');
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-    let currentFileArrayBuffer = null; // We will keep a "Safe Copy" here
-    let pdfDocInfo = null;
-    let scale = 1.0; 
-
-    // --- EVENT LISTENERS ---
-    fileInput.addEventListener('change', handleFileSelect);
-    
-    // Draggable Logic for Crop Box
-    let isDragging = false;
-    let dragStartX, dragStartY, boxStartX, boxStartY;
-
-    cropBox.addEventListener('mousedown', function(e) {
-        const rect = cropBox.getBoundingClientRect();
-        const isResizeHandle = (e.clientX > rect.right - 20 && e.clientY > rect.bottom - 20);
-        
-        if (isResizeHandle) return; 
-
-        isDragging = true;
-        dragStartX = e.clientX;
-        dragStartY = e.clientY;
-        boxStartX = cropBox.offsetLeft;
-        boxStartY = cropBox.offsetTop;
-        e.preventDefault(); 
-    });
-
-    window.addEventListener('mousemove', function(e) {
-        if (!isDragging) return;
-        const deltaX = e.clientX - dragStartX;
-        const deltaY = e.clientY - dragStartY;
-        
-        let newLeft = boxStartX + deltaX;
-        let newTop = boxStartY + deltaY;
-
-        const maxLeft = canvas.width - cropBox.offsetWidth;
-        const maxTop = canvas.height - cropBox.offsetHeight;
-
-        cropBox.style.left = Math.max(0, Math.min(newLeft, maxLeft)) + 'px';
-        cropBox.style.top = Math.max(0, Math.min(newTop, maxTop)) + 'px';
-    });
-
-    window.addEventListener('mouseup', () => isDragging = false);
-
-    // --- FILE HANDLING ---
-    async function handleFileSelect(e) {
-        const file = e.target.files[0];
-        if (!file || file.type !== 'application/pdf') return;
-
-        const rawBuffer = await file.arrayBuffer();
-        
-        // --- KEY FIX HERE ---
-        // We clone the buffer. 'currentFileArrayBuffer' stays safe for pdf-lib (editing).
-        // We pass 'rawBuffer' to renderPageOne, where pdf.js might "detach" it.
-        currentFileArrayBuffer = rawBuffer.slice(0); 
-
-        uploadScreen.classList.add('hidden');
-        canvasWrapper.classList.remove('hidden');
-        toolbar.classList.remove('hidden');
-
-        await renderPageOne(rawBuffer);
-    }
-
-    async function renderPageOne(bufferToRender) {
-        const loadingTask = pdfjsLib.getDocument(bufferToRender);
-        const pdf = await loadingTask.promise;
-        const page = await pdf.getPage(1);
-
-        const viewport = page.getViewport({ scale: 1.0 });
-        
-        // Limit width to 1000px for better visibility
-        const desiredWidth = Math.min(viewport.width, 1000); 
-        scale = desiredWidth / viewport.width;
-        
-        const scaledViewport = page.getViewport({ scale: scale });
-
-        canvas.width = scaledViewport.width;
-        canvas.height = scaledViewport.height;
-
-        const context = canvas.getContext('2d');
-        const renderContext = {
-            canvasContext: context,
-            viewport: scaledViewport
+        const DOM = {
+            viewport: document.getElementById('viewport'),
+            scrollSpacer: document.getElementById('scrollSpacer'),
+            fileInput: document.getElementById('fileInput'),
+            exportBtn: document.getElementById('exportBtn'),
+            loader: document.getElementById('loader'),
+            loaderText: document.getElementById('loaderText'),
+            fileInfo: document.getElementById('fileInfo')
         };
-        await page.render(renderContext).promise;
 
-        pdfDocInfo = {
-            width: viewport.width, 
-            height: viewport.height, 
-            visualScale: scale
+        const Config = {
+            gap: 20,
+            maxWidth: 800,
+            // Capped at 1.2 to prevent mobile browser freezing during heavy scrolling
+            renderScale: Math.min(window.devicePixelRatio || 1, 1.2) 
         };
-    }
 
-    // --- CROPPING LOGIC ---
-    cropBtn.addEventListener('click', async () => {
-        if (!currentFileArrayBuffer) return;
-
-        cropBtn.innerText = "Processing...";
-        cropBtn.disabled = true;
-
-        try {
-            // Get Coords
-            const cssLeft = cropBox.offsetLeft;
-            const cssTop = cropBox.offsetTop;
-            const cssWidth = cropBox.offsetWidth;
-            const cssHeight = cropBox.offsetHeight;
-
-            // Convert to PDF Points
-            const pdfScale = 1 / pdfDocInfo.visualScale;
+        const State = {
+            pdfDocument: null,
+            pdfFile: null,
+            numPages: 0,
             
-            const x = cssLeft * pdfScale;
-            const w = cssWidth * pdfScale;
-            const h = cssHeight * pdfScale;
+            pageWidth: 0,
+            pageHeight: 0,
+            aspectRatio: 1,
+            activePages: new Map(), 
             
-            // Invert Y axis (PDFs start bottom-left)
-            const y = pdfDocInfo.height - (cssTop * pdfScale) - h;
+            globalCrop: { x: 0.1, y: 0.1, w: 0.8, h: 0.8 },
+            
+            scrollRafId: null,
+            dragRafId: null
+        };
 
-            // Load PDF with the SAFE COPY of the buffer
-            const { PDFDocument } = PDFLib;
-            const pdfDoc = await PDFDocument.load(currentFileArrayBuffer);
-            const pages = pdfDoc.getPages();
+        // --- NEW: Smart Render Engine to fix scrolling stutter ---
+        const RenderEngine = {
+            queue: [],
+            processing: false,
+            
+            add(pageNum) {
+                if (!this.queue.includes(pageNum)) {
+                    this.queue.push(pageNum);
+                    this.process();
+                }
+            },
+            
+            remove(pageNum) {
+                this.queue = this.queue.filter(p => p !== pageNum);
+            },
+            
+            async process() {
+                if (this.processing || this.queue.length === 0) return;
+                this.processing = true;
 
-            // Apply Crop
-            pages.forEach(page => {
-                page.setCropBox(x, y, w, h);
-                page.setMediaBox(x, y, w, h); 
-            });
+                while (this.queue.length > 0) {
+                    // Priority rendering: Load the page closest to the screen center first
+                    const scrollTop = DOM.viewport.scrollTop;
+                    const totalPageHeight = State.pageHeight + Config.gap;
+                    const currentPage = Math.round(scrollTop / totalPageHeight) + 1;
+                    
+                    this.queue.sort((a, b) => Math.abs(a - currentPage) - Math.abs(b - currentPage));
+                    
+                    const pageNum = this.queue.shift();
+                    const pageData = State.activePages.get(pageNum);
+                    
+                    if (!pageData || pageData.isRendered) continue;
 
-            // Save
-            const pdfBytes = await pdfDoc.save();
-            download(pdfBytes, "cropped-document.pdf");
+                    try {
+                        const page = await State.pdfDocument.getPage(pageNum);
+                        // Abort if page scrolled out of view during fetch
+                        if (!State.activePages.has(pageNum)) { 
+                            page.cleanup(); 
+                            continue; 
+                        }
+                        
+                        pageData.pageObj = page;
+                        
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d', { alpha: false });
+                        
+                        // Insert canvas BEHIND the crop overlay
+                        const overlay = pageData.container.querySelector('.crop-overlay-container');
+                        pageData.container.insertBefore(canvas, overlay);
+                        pageData.canvas = canvas;
 
-            cropBtn.innerText = "Crop PDF";
-            cropBtn.disabled = false;
+                        const viewport = page.getViewport({ scale: (State.pageWidth / page.getViewport({scale: 1}).width) * Config.renderScale });
+                        canvas.width = viewport.width;
+                        canvas.height = viewport.height;
 
-        } catch (err) {
-            console.error(err);
-            alert("Error: " + err.message);
-            cropBtn.innerText = "Crop PDF";
-            cropBtn.disabled = false;
+                        pageData.renderTask = page.render({ canvasContext: ctx, viewport: viewport });
+                        await pageData.renderTask.promise;
+                        
+                        pageData.isRendered = true;
+                        pageData.container.classList.remove('loading-skeleton'); // Remove loading animation
+                        
+                    } catch (err) {
+                        if (err.name !== 'RenderingCancelledException') {
+                            console.log(`Render skipped for page ${pageNum}`);
+                        }
+                    }
+                }
+                this.processing = false;
+            }
+        };
+
+        class AppController {
+            static async init() {
+                this.bindEvents();
+            }
+
+            static bindEvents() {
+                DOM.fileInput.addEventListener('change', this.handleFileUpload.bind(this));
+                DOM.exportBtn.addEventListener('click', this.exportCroppedPDF.bind(this));
+                DOM.viewport.addEventListener('scroll', this.onScroll.bind(this), { passive: true });
+                
+                window.addEventListener('resize', () => {
+                    if (State.numPages > 0) this.recalculateLayout();
+                });
+
+                this.setupGlobalCropEvents();
+            }
+
+            static showLoader(msg) { DOM.loaderText.textContent = msg; DOM.loader.style.display = 'flex'; }
+            static hideLoader() { DOM.loader.style.display = 'none'; }
+
+            static async handleFileUpload(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                this.showLoader('Loading Document...');
+                DOM.exportBtn.style.display = 'none';
+                
+                if (State.pdfDocument) State.pdfDocument.destroy();
+                this.cleanupAllPages();
+
+                try {
+                    State.pdfFile = file;
+                    const arrayBuffer = await file.arrayBuffer();
+                    
+                    const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) });
+                    State.pdfDocument = await loadingTask.promise;
+                    State.numPages = State.pdfDocument.numPages;
+
+                    DOM.fileInfo.textContent = `${file.name} (${State.numPages} Pages)`;
+
+                    await this.initializeVirtualLayout();
+                    DOM.exportBtn.style.display = 'flex';
+                } catch (error) {
+                    alert("Error loading PDF: " + error.message);
+                } finally {
+                    this.hideLoader();
+                }
+            }
+
+            static async initializeVirtualLayout() {
+                const page1 = await State.pdfDocument.getPage(1);
+                const viewport = page1.getViewport({ scale: 1.0 });
+                State.aspectRatio = viewport.width / viewport.height;
+                page1.cleanup();
+
+                this.recalculateLayout();
+            }
+
+            static recalculateLayout() {
+                const containerWidth = DOM.viewport.clientWidth;
+                let displayWidth = containerWidth - 40; 
+                if (displayWidth > Config.maxWidth) displayWidth = Config.maxWidth;
+
+                State.pageWidth = displayWidth;
+                State.pageHeight = displayWidth / State.aspectRatio;
+
+                const totalHeight = State.numPages * (State.pageHeight + Config.gap) + Config.gap;
+                DOM.scrollSpacer.style.height = `${totalHeight}px`;
+
+                this.updateVisiblePages();
+            }
+
+            static onScroll() {
+                if (State.scrollRafId) return;
+                State.scrollRafId = requestAnimationFrame(() => {
+                    this.updateVisiblePages();
+                    State.scrollRafId = null;
+                });
+            }
+
+            static updateVisiblePages() {
+                if (State.numPages === 0) return;
+
+                const scrollTop = DOM.viewport.scrollTop;
+                const viewHeight = DOM.viewport.clientHeight;
+                const totalPageHeight = State.pageHeight + Config.gap;
+
+                // Buffer increased to 2 pages for smoother experience
+                let startPage = Math.floor(scrollTop / totalPageHeight) + 1 - 2;
+                let endPage = Math.ceil((scrollTop + viewHeight) / totalPageHeight) + 1 + 2;
+
+                startPage = Math.max(1, startPage);
+                endPage = Math.min(State.numPages, endPage);
+
+                const pagesToKeep = new Set();
+                for (let i = startPage; i <= endPage; i++) pagesToKeep.add(i);
+
+                for (const [pageNum, data] of State.activePages.entries()) {
+                    if (!pagesToKeep.has(pageNum)) {
+                        this.unmountPage(pageNum, data);
+                    }
+                }
+
+                for (let i = startPage; i <= endPage; i++) {
+                    if (!State.activePages.has(i)) {
+                        this.mountPage(i);
+                    }
+                }
+            }
+
+            static mountPage(pageNum) {
+                // 1. Create DOM completely synchronously to avoid scroll jank
+                const container = document.createElement('div');
+                container.className = 'pdf-page-container loading-skeleton'; // Add Skeleton animation
+                container.dataset.pageNumber = pageNum;
+                
+                const topPos = (pageNum - 1) * (State.pageHeight + Config.gap) + Config.gap;
+                container.style.top = `${topPos}px`;
+                container.style.width = `${State.pageWidth}px`;
+                container.style.height = `${State.pageHeight}px`;
+
+                DOM.viewport.appendChild(container);
+                
+                // Attach crop UI instantly so user can interact even while loading
+                this.attachCropUI(container);
+
+                const pageData = { 
+                    container, 
+                    renderTask: null, 
+                    pageObj: null,
+                    canvas: null,
+                    isRendered: false
+                };
+                
+                State.activePages.set(pageNum, pageData);
+
+                // 2. Add to Queue for async rendering
+                RenderEngine.add(pageNum);
+            }
+
+            static unmountPage(pageNum, data) {
+                RenderEngine.remove(pageNum);
+
+                if (data.renderTask) {
+                    try { data.renderTask.cancel(); } catch(e){}
+                }
+                if (data.pageObj) {
+                    try { data.pageObj.cleanup(); } catch(e){}
+                }
+                
+                if (data.canvas) {
+                    data.canvas.width = 0; 
+                    data.canvas.height = 0; 
+                    data.canvas.remove();
+                }
+                
+                if (data.container) {
+                    data.container.remove();
+                }
+                
+                State.activePages.delete(pageNum);
+            }
+
+            static cleanupAllPages() {
+                for (const [pageNum, data] of State.activePages.entries()) {
+                    this.unmountPage(pageNum, data);
+                }
+                State.activePages.clear();
+                RenderEngine.queue = [];
+            }
+
+            /* --- CROP ENGINE --- */
+            static attachCropUI(container) {
+                const overlay = document.createElement('div');
+                overlay.className = 'crop-overlay-container';
+
+                const cropBox = document.createElement('div');
+                cropBox.className = 'crop-box';
+                
+                cropBox.style.left = `${State.globalCrop.x * 100}%`;
+                cropBox.style.top = `${State.globalCrop.y * 100}%`;
+                cropBox.style.width = `${State.globalCrop.w * 100}%`;
+                cropBox.style.height = `${State.globalCrop.h * 100}%`;
+
+                ['tl', 'tr', 'bl', 'br'].forEach(pos => {
+                    const handle = document.createElement('div');
+                    handle.className = `handle ${pos}`;
+                    handle.dataset.pos = pos;
+                    cropBox.appendChild(handle);
+                });
+
+                overlay.appendChild(cropBox);
+                container.appendChild(overlay);
+            }
+
+            static setupGlobalCropEvents() {
+                let isDragging = false, isResizing = false;
+                let activeHandle = null, startX, startY, startCrop;
+
+                const getEventPos = (e) => (e.touches && e.touches.length > 0) 
+                    ? { x: e.touches[0].clientX, y: e.touches[0].clientY } 
+                    : { x: e.clientX, y: e.clientY };
+
+                const onStart = (e) => {
+                    if (e.target.classList.contains('handle')) {
+                        isResizing = true;
+                        activeHandle = e.target.dataset.pos;
+                    } else if (e.target.classList.contains('crop-box')) {
+                        isDragging = true;
+                    } else return;
+                    
+                    e.preventDefault();
+                    const pos = getEventPos(e);
+                    startX = pos.x; startY = pos.y;
+                    startCrop = { ...State.globalCrop };
+                };
+
+                const onMove = (e) => {
+                    if (!isDragging && !isResizing) return;
+                    e.preventDefault();
+
+                    if (State.dragRafId) cancelAnimationFrame(State.dragRafId);
+
+                    State.dragRafId = requestAnimationFrame(() => {
+                        const pos = getEventPos(e);
+                        const dx = (pos.x - startX) / State.pageWidth;
+                        const dy = (pos.y - startY) / State.pageHeight;
+
+                        let newCrop = { ...startCrop };
+
+                        if (isDragging) {
+                            newCrop.x = Math.max(0, Math.min(1 - newCrop.w, startCrop.x + dx));
+                            newCrop.y = Math.max(0, Math.min(1 - newCrop.h, startCrop.y + dy));
+                        } else if (isResizing) {
+                            if (activeHandle.includes('l')) {
+                                const maxW = startCrop.w + startCrop.x;
+                                newCrop.x = Math.max(0, Math.min(maxW - 0.05, startCrop.x + dx));
+                                newCrop.w = startCrop.w + (startCrop.x - newCrop.x);
+                            }
+                            if (activeHandle.includes('r')) newCrop.w = Math.max(0.05, Math.min(1 - startCrop.x, startCrop.w + dx));
+                            if (activeHandle.includes('t')) {
+                                const maxH = startCrop.h + startCrop.y;
+                                newCrop.y = Math.max(0, Math.min(maxH - 0.05, startCrop.y + dy));
+                                newCrop.h = startCrop.h + (startCrop.y - newCrop.y);
+                            }
+                            if (activeHandle.includes('b')) newCrop.h = Math.max(0.05, Math.min(1 - startCrop.y, startCrop.h + dy));
+                        }
+
+                        State.globalCrop = newCrop;
+                        
+                        document.querySelectorAll('.crop-box').forEach(cb => {
+                            cb.style.left = `${newCrop.x * 100}%`;
+                            cb.style.top = `${newCrop.y * 100}%`;
+                            cb.style.width = `${newCrop.w * 100}%`;
+                            cb.style.height = `${newCrop.h * 100}%`;
+                        });
+                    });
+                };
+
+                const onEnd = () => { isDragging = false; isResizing = false; activeHandle = null; };
+
+                window.addEventListener('mousedown', onStart, { passive: false });
+                window.addEventListener('touchstart', onStart, { passive: false });
+                window.addEventListener('mousemove', onMove, { passive: false });
+                window.addEventListener('touchmove', onMove, { passive: false });
+                window.addEventListener('mouseup', onEnd);
+                window.addEventListener('touchend', onEnd);
+            }
+
+            /* --- EXPORT ENGINE --- */
+            static async exportCroppedPDF() {
+                if (!State.pdfFile) return;
+                this.showLoader('Applying Crops & Exporting...');
+                
+                try {
+                    const arrayBuffer = await State.pdfFile.arrayBuffer(); 
+                    const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
+                    const pages = pdfDoc.getPages();
+
+                    pages.forEach((page) => {
+                        const { width, height } = page.getSize();
+                        const cropX = State.globalCrop.x * width;
+                        const cropW = State.globalCrop.w * width;
+                        const cropH = State.globalCrop.h * height;
+                        const cropY = height - ((State.globalCrop.y * height) + cropH);
+                        page.setCropBox(cropX, cropY, cropW, cropH);
+                    });
+
+                    const pdfBytes = await pdfDoc.save();
+
+                    const blob = new Blob([pdfBytes], { type: "application/pdf" });
+                    const link = document.createElement('a');
+                    link.href = window.URL.createObjectURL(blob);
+                    link.download = `cropped_${Date.now()}.pdf`;
+                    link.click();
+                    
+                    setTimeout(() => window.URL.revokeObjectURL(link.href), 1000);
+                } catch (error) {
+                    alert("Export Error: " + error.message);
+                } finally {
+                    this.hideLoader();
+                }
+            }
         }
-    });
 
-    function download(data, filename) {
-        const blob = new Blob([data], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-    }
-
-    window.resetApp = function() {
-        location.reload();
-    }
-</script>
-
+        document.addEventListener('DOMContentLoaded', () => AppController.init());
+    </script>
 </body>
-</html>
+</html
