@@ -1,0 +1,457 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Micro PDF Maker (Auto-Fit & All Formats)</title>
+    <!-- Importing PDF-lib for optimized client-side PDF manipulation -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <style>
+        :root {
+            --primary: #990000;
+            --bg-color: #f4f4f9;
+            --border: #ccc;
+            --panel-bg: #f9f9f9;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            background: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            max-width: 800px;
+            width: 100%;
+        }
+        h2 { margin-top: 0; border-bottom: 2px solid var(--border); padding-bottom: 10px; }
+        
+        .section-title {
+            background: var(--primary);
+            color: white;
+            padding: 8px 12px;
+            font-size: 14px;
+            border-radius: 4px;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }
+        .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; }
+        
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #555; }
+        input[type="file"], input[type="text"], input[type="number"], select {
+            width: 100%; padding: 8px; border: 1px solid var(--border);
+            border-radius: 4px; box-sizing: border-box; font-size: 13px;
+        }
+        .checkbox-group { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-top: 5px;}
+        .checkbox-group input { width: auto; }
+        
+        .panel { background: var(--panel-bg); padding: 15px; border: 1px solid var(--border); border-radius: 4px; }
+        .note { font-size: 11px; color: #777; margin-top: 4px; display: block;}
+
+        button {
+            background-color: var(--primary); color: white; border: none;
+            padding: 15px; font-size: 16px; border-radius: 4px; cursor: pointer;
+            width: 100%; font-weight: bold; margin-top: 20px; transition: 0.3s;
+        }
+        button:hover { background-color: #7a0000; }
+        button:disabled { background-color: #aaa; cursor: not-allowed; }
+        
+        #status { margin-top: 15px; font-size: 14px; text-align: center; font-weight: bold; }
+        #download-link {
+            display: none; text-align: center; margin-top: 15px; background: #28a745;
+            color: white; padding: 12px; text-decoration: none; border-radius: 4px; font-weight: bold;
+        }
+        #download-link:hover { background: #218838; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Micro PDF Maker (Smart Fit & All Sizes)</h2>
+    
+    <div class="form-group">
+        <label for="pdf-upload">Select PDF File:</label>
+        <input type="file" id="pdf-upload" accept="application/pdf">
+    </div>
+
+    <!-- LAYOUT SECTION -->
+    <div class="section-title">Layout & Page Settings</div>
+    <div class="panel">
+        
+        <div class="grid-2">
+            <div class="form-group">
+                <label>Page Format (Size):</label>
+                <select id="page-size">
+                    <option value="auto">Auto Match (Original PDF Size)</option>
+                    <optgroup label="Standard">
+                        <option value="A4" selected>A4</option>
+                        <option value="Letter">Letter</option>
+                        <option value="Legal">Legal</option>
+                        <option value="Tabloid">Tabloid / Ledger</option>
+                    </optgroup>
+                    <optgroup label="ISO A-Series">
+                        <option value="A0">A0</option>
+                        <option value="A1">A1</option>
+                        <option value="A2">A2</option>
+                        <option value="A3">A3</option>
+                        <option value="A5">A5</option>
+                        <option value="A6">A6</option>
+                        <option value="A7">A7</option>
+                    </optgroup>
+                    <optgroup label="ANSI Sizes">
+                        <option value="ANSI_A">ANSI A</option>
+                        <option value="ANSI_B">ANSI B</option>
+                        <option value="ANSI_C">ANSI C</option>
+                        <option value="ANSI_D">ANSI D</option>
+                        <option value="ANSI_E">ANSI E</option>
+                    </optgroup>
+                    <optgroup label="ARCH Sizes">
+                        <option value="ARCH_A">ARCH A</option>
+                        <option value="ARCH_B">ARCH B</option>
+                        <option value="ARCH_C">ARCH C</option>
+                        <option value="ARCH_D">ARCH D</option>
+                        <option value="ARCH_E">ARCH E</option>
+                    </optgroup>
+                    <optgroup label="ISO B-Series">
+                        <option value="B0">B0</option>
+                        <option value="B1">B1</option>
+                        <option value="B2">B2</option>
+                        <option value="B3">B3</option>
+                        <option value="B4">B4</option>
+                        <option value="B5">B5</option>
+                        <option value="B6">B6</option>
+                        <option value="B7">B7</option>
+                    </optgroup>
+                    <optgroup label="ISO C-Series">
+                        <option value="C0">C0</option>
+                        <option value="C1">C1</option>
+                        <option value="C2">C2</option>
+                        <option value="C3">C3</option>
+                        <option value="C4">C4</option>
+                        <option value="C5">C5</option>
+                        <option value="C6">C6</option>
+                        <option value="C7">C7</option>
+                    </optgroup>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Page Orientation:</label>
+                <select id="orientation">
+                    <option value="auto" selected>Auto Best Fit (Smart)</option>
+                    <option value="portrait">Strictly Portrait</option>
+                    <option value="landscape">Strictly Landscape</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="form-group">
+                <label>PDF Page Layout (Rows x Cols):</label>
+                <select id="layout">
+                    <option value="1x2">2 pages (1x2)</option>
+                    <option value="2x1">2 pages (2x1)</option>
+                    <option value="1x3">3 pages (1x3)</option>
+                    <option value="3x1">3 pages (3x1)</option>
+                    <option value="2x2" selected>4 pages (2x2)</option>
+                    <option value="2x3">6 pages (2x3)</option>
+                    <option value="3x2">6 pages (3x2)</option>
+                    <option value="2x4">8 pages (2x4)</option>
+                    <option value="4x2">8 pages (4x2)</option>
+                    <option value="3x3">9 pages (3x3)</option>
+                    <option value="2x5">10 pages (2x5)</option>
+                    <option value="5x2">10 pages (5x2)</option>
+                    <option value="3x4">12 pages (3x4)</option>
+                    <option value="4x3">12 pages (4x3)</option>
+                    <option value="3x5">15 pages (3x5)</option>
+                    <option value="5x3">15 pages (5x3)</option>
+                    <option value="4x4">16 pages (4x4)</option>
+                    <option value="3x6">18 pages (3x6)</option>
+                    <option value="6x3">18 pages (6x3)</option>
+                    <option value="4x5">20 pages (4x5)</option>
+                    <option value="5x4">20 pages (5x4)</option>
+                </select>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="draw-border" checked>
+                    <label for="draw-border" style="margin:0;">Draw border around pages</label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Inner Margin (mm):</label>
+                <input type="number" id="margin-inner" value="0" min="0">
+                <span class="note">Space between the micro-pages.</span>
+            </div>
+        </div>
+
+        <label style="margin-top:10px;">Outer Margins (mm) - All Defaulted to 0:</label>
+        <div class="grid-4 form-group">
+            <div><label>Top</label><input type="number" id="margin-top" value="0" min="0"></div>
+            <div><label>Right</label><input type="number" id="margin-right" value="0" min="0"></div>
+            <div><label>Bottom</label><input type="number" id="margin-bottom" value="0" min="0"></div>
+            <div><label>Left</label><input type="number" id="margin-left" value="0" min="0"></div>
+        </div>
+    </div>
+
+    <!-- HEADER / FOOTER SECTION -->
+    <div class="section-title">Header / Footer</div>
+    <div class="panel">
+        <span class="note" style="margin-bottom:10px;">Placeholders: <b>(x)</b> = current page, <b>(y)</b> = total pages, <b>(file)</b> = filename without ext.</span>
+        
+        <label>Header Text:</label>
+        <div class="grid-3 form-group">
+            <input type="text" id="header-left" placeholder="Left">
+            <input type="text" id="header-center" placeholder="Center">
+            <input type="text" id="header-right" placeholder="Right">
+        </div>
+
+        <label>Footer Text:</label>
+        <div class="grid-3 form-group">
+            <input type="text" id="footer-left" placeholder="Left (e.g. Page (x) of (y))">
+            <input type="text" id="footer-center" placeholder="Center">
+            <input type="text" id="footer-right" placeholder="Right">
+        </div>
+    </div>
+
+    <button id="convert-btn" onclick="processPDF()">Convert & Auto-Fit PDF</button>
+    <div id="status"></div>
+    <a id="download-link">Download Optimized PDF</a>
+</div>
+
+<script>
+    // Dictionary of standard page sizes in PDF Points (W x H)
+    const pageDims = {
+        A0: [2383.94, 3370.39], A1: [1683.78, 2383.94], A2: [1190.55, 1683.78],
+        A3: [841.89, 1190.55], A4: [595.28, 841.89], A5: [419.53, 595.28],
+        A6: [297.64, 419.53], A7: [209.76, 297.64],
+        Letter: [612, 792], Legal: [612, 1008], Tabloid: [792, 1224],
+        ANSI_A: [612, 792], ANSI_B: [792, 1224], ANSI_C: [1224, 1584], 
+        ANSI_D: [1584, 2448], ANSI_E: [2448, 3168],
+        ARCH_A: [648, 864], ARCH_B: [864, 1296], ARCH_C: [1296, 1728], 
+        ARCH_D: [1728, 2592], ARCH_E: [2592, 3456],
+        B0: [2834.65, 4008.19], B1: [2004.09, 2834.65], B2: [1417.32, 2004.09], 
+        B3: [1000.63, 1417.32], B4: [708.66, 1000.63], B5: [498.90, 708.66], 
+        B6: [354.33, 498.90], B7: [249.45, 354.33],
+        C0: [2599.37, 3676.54], C1: [1836.85, 2599.37], C2: [1298.27, 1836.85], 
+        C3: [918.43, 1298.27], C4: [649.13, 918.43], C5: [459.21, 649.13], 
+        C6: [323.15, 459.21], C7: [229.61, 323.15]
+    };
+
+    function mmToPt(mm) { return mm * 2.83465; }
+
+    function getVisualSize(page) {
+        const rawSize = page.getSize();
+        const angle = (page.getRotation().angle % 360 + 360) % 360;
+        if (angle === 90 || angle === 270) {
+            return { width: rawSize.height, height: rawSize.width, angle: angle };
+        }
+        return { width: rawSize.width, height: rawSize.height, angle: angle };
+    }
+
+    async function processPDF() {
+        const fileInput = document.getElementById('pdf-upload');
+        const statusDiv = document.getElementById('status');
+        const downloadLink = document.getElementById('download-link');
+        const convertBtn = document.getElementById('convert-btn');
+
+        if (!fileInput.files.length) { alert('Please select a PDF file first.'); return; }
+        
+        const file = fileInput.files[0];
+        const filenameNoExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+        
+        const [rows, cols] = document.getElementById('layout').value.split('x').map(Number);
+        const pagesPerSheet = rows * cols;
+        const drawBorder = document.getElementById('draw-border').checked;
+        
+        const mTop = mmToPt(Number(document.getElementById('margin-top').value));
+        const mRight = mmToPt(Number(document.getElementById('margin-right').value));
+        const mBottom = mmToPt(Number(document.getElementById('margin-bottom').value));
+        const mLeft = mmToPt(Number(document.getElementById('margin-left').value));
+        const mInner = mmToPt(Number(document.getElementById('margin-inner').value));
+
+        const headers = [
+            document.getElementById('header-left').value, document.getElementById('header-center').value, document.getElementById('header-right').value
+        ];
+        const footers = [
+            document.getElementById('footer-left').value, document.getElementById('footer-center').value, document.getElementById('footer-right').value
+        ];
+
+        try {
+            convertBtn.disabled = true;
+            statusDiv.style.color = '#333';
+            statusDiv.innerText = 'Calculating Smart Best Fit... Please wait.';
+            downloadLink.style.display = 'none';
+
+            const arrayBuffer = await file.arrayBuffer();
+            const originalPdf = await PDFLib.PDFDocument.load(arrayBuffer);
+            const originalPages = originalPdf.getPages();
+            
+            const newPdf = await PDFLib.PDFDocument.create();
+            const helveticaFont = await newPdf.embedFont(PDFLib.StandardFonts.Helvetica);
+            
+            // SMART ALGORITHM: Calculate Target Size and Orientation
+            const firstVis = getVisualSize(originalPages[0]);
+            
+            let targetWidth, targetHeight;
+            const sizeSelection = document.getElementById('page-size').value;
+            
+            if (sizeSelection === 'auto') {
+                targetWidth = firstVis.width * cols;
+                targetHeight = firstVis.height * rows;
+            } else {
+                targetWidth = pageDims[sizeSelection][0];
+                targetHeight = pageDims[sizeSelection][1];
+            }
+
+            const orientSelection = document.getElementById('orientation').value;
+            let isLandscape = false;
+            
+            if (orientSelection === 'auto') {
+                // Auto Orientation calculates grid aspect ratio to find the best fit
+                const gridOrigW = cols * firstVis.width;
+                const gridOrigH = rows * firstVis.height;
+                isLandscape = gridOrigW > gridOrigH;
+            } else {
+                isLandscape = (orientSelection === 'landscape');
+            }
+
+            // Apply selected or calculated orientation
+            if (isLandscape && targetWidth < targetHeight) {
+                [targetWidth, targetHeight] = [targetHeight, targetWidth];
+            } else if (!isLandscape && targetWidth > targetHeight) {
+                [targetWidth, targetHeight] = [targetHeight, targetWidth];
+            }
+
+            // EXACT CENTERING MATH
+            const usableWidth = targetWidth - mLeft - mRight;
+            const usableHeight = targetHeight - mTop - mBottom;
+            
+            const totalOriginalPages = originalPages.length;
+            const totalOutputPages = Math.ceil(totalOriginalPages / pagesPerSheet);
+
+            const maxContentW = usableWidth - ((cols - 1) * mInner);
+            const maxContentH = usableHeight - ((rows - 1) * mInner);
+
+            const scaleX = maxContentW > 0 ? maxContentW / (cols * firstVis.width) : 1;
+            const scaleY = maxContentH > 0 ? maxContentH / (rows * firstVis.height) : 1;
+            const globalScale = Math.min(scaleX, scaleY); 
+
+            const scaledW = firstVis.width * globalScale;
+            const scaledH = firstVis.height * globalScale;
+
+            const gridTotalW = cols * scaledW + (cols - 1) * mInner;
+            const gridTotalH = rows * scaledH + (rows - 1) * mInner;
+
+            // This ensures mathematically perfect centering within the usable area
+            const startX = mLeft + (usableWidth - gridTotalW) / 2;
+            const startY = mBottom + (usableHeight - gridTotalH) / 2;
+            const gridTopY = startY + gridTotalH;
+
+            let currentPage;
+            
+            const processText = (text, currentOutputPage) => {
+                if(!text) return '';
+                return text.replace(/\(x\)/g, currentOutputPage).replace(/\(y\)/g, totalOutputPages)
+                           .replace(/\(file\)/g, filenameNoExt).replace(/\(file\)\.\(ext\)/g, file.name);
+            };
+
+            const drawHeaderFooter = (page, currentOutputPage) => {
+                const fontSize = 10;
+                const yOffsetHeader = targetHeight - (mTop / 2) - (fontSize / 2);
+                const yOffsetFooter = (mBottom / 2) - (fontSize / 2);
+                
+                const drawTextArgs = (text, xAlign, yPos) => {
+                    if(!text) return;
+                    const cleanText = processText(text, currentOutputPage);
+                    const textWidth = helveticaFont.widthOfTextAtSize(cleanText, fontSize);
+                    let xPos = mLeft; 
+                    if(xAlign === 'center') xPos = mLeft + (usableWidth / 2) - (textWidth / 2);
+                    if(xAlign === 'right') xPos = targetWidth - mRight - textWidth;
+                    
+                    page.drawText(cleanText, { x: xPos, y: yPos, size: fontSize, font: helveticaFont, color: PDFLib.rgb(0,0,0) });
+                };
+
+                drawTextArgs(headers[0], 'left', yOffsetHeader); drawTextArgs(headers[1], 'center', yOffsetHeader); drawTextArgs(headers[2], 'right', yOffsetHeader);
+                drawTextArgs(footers[0], 'left', yOffsetFooter); drawTextArgs(footers[1], 'center', yOffsetFooter); drawTextArgs(footers[2], 'right', yOffsetFooter);
+            };
+
+            for (let i = 0; i < totalOriginalPages; i++) {
+                const outputPageIndex = Math.floor(i / pagesPerSheet);
+                const pageIndexWithinSheet = i % pagesPerSheet;
+
+                if (pageIndexWithinSheet === 0) {
+                    currentPage = newPdf.addPage([targetWidth, targetHeight]);
+                    drawHeaderFooter(currentPage, outputPageIndex + 1);
+                }
+
+                const originalPage = originalPages[i];
+                const visSize = getVisualSize(originalPage);
+                const normAngle = visSize.angle;
+                const embeddedPage = await newPdf.embedPage(originalPage);
+
+                const localScaleX = scaledW / visSize.width;
+                const localScaleY = scaledH / visSize.height;
+                const localScale = Math.min(localScaleX, localScaleY);
+                
+                const finalW = visSize.width * localScale;
+                const finalH = visSize.height * localScale;
+
+                const colIndex = pageIndexWithinSheet % cols;
+                const rowIndex = Math.floor(pageIndexWithinSheet / cols);
+
+                const cellLeft = startX + colIndex * (scaledW + mInner);
+                const cellTop = gridTopY - rowIndex * (scaledH + mInner);
+                const cellBottom = cellTop - scaledH;
+
+                const xPos = cellLeft + (scaledW - finalW) / 2;
+                const yPos = cellBottom + (scaledH - finalH) / 2;
+
+                let drawX = xPos; let drawY = yPos;
+
+                if (normAngle === 90) { drawY += finalH; } 
+                else if (normAngle === 180) { drawX += finalW; drawY += finalH; } 
+                else if (normAngle === 270) { drawX += finalW; }
+
+                currentPage.drawPage(embeddedPage, {
+                    x: drawX, y: drawY, xScale: localScale, yScale: localScale, rotate: PDFLib.degrees(-normAngle) 
+                });
+
+                if (drawBorder) {
+                    currentPage.drawRectangle({
+                        x: xPos, y: yPos, width: finalW, height: finalH,
+                        borderColor: PDFLib.rgb(0.5, 0.5, 0.5), borderWidth: 0.5
+                    });
+                }
+            }
+
+            const pdfBytes = await newPdf.save();
+            const blob = new Blob([pdfBytes], { type: "application/pdf" });
+            const url = URL.createObjectURL(blob);
+
+            downloadLink.href = url;
+            downloadLink.download = `${filenameNoExt}_SmartFit.pdf`;
+            downloadLink.style.display = 'block';
+            statusDiv.style.color = 'green';
+            statusDiv.innerText = 'Success! Document perfectly auto-fitted and generated.';
+
+        } catch (error) {
+            console.error("PDF Processing Error:", error);
+            statusDiv.style.color = 'red';
+            statusDiv.innerText = 'An error occurred. Make sure the PDF is not encrypted.';
+        } finally {
+            convertBtn.disabled = false;
+        }
+    }
+</script>
+
+</body>
+</html>
