@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced PDF Reorder Tool</title>
+    <title>Advanced PDF Reorder & Insert</title>
     
-    <!-- Google Fonts for Modern Typography -->
+    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- PDF-Lib Library -->
@@ -14,8 +14,9 @@
     <style>
         /* --- RESET & VARIABLES --- */
         :root {
-            --primary: #f43f5e; /* Modern Rose/Red */
-            --primary-hover: #e11d48;
+            --primary: #4f46e5; /* Modern Indigo */
+            --primary-hover: #4338ca;
+            --primary-light: #e0e7ff;
             --bg-color: #f8fafc;
             --text-main: #0f172a;
             --text-muted: #64748b;
@@ -37,21 +38,22 @@
         /* --- NAVBAR --- */
         .navbar {
             background-color: var(--card-bg);
-            padding: 20px 40px;
+            padding: 16px 40px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             border-bottom: 1px solid var(--border-color);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
-        .logo { font-weight: 700; font-size: 1.5rem; letter-spacing: -0.5px; }
+        .logo { font-weight: 700; font-size: 1.4rem; letter-spacing: -0.5px; }
         .logo span { color: var(--primary); }
         .badge {
-            background: #f1f5f9;
-            color: var(--text-muted);
-            padding: 6px 12px;
+            background: var(--primary-light);
+            color: var(--primary-hover);
+            padding: 6px 14px;
             border-radius: 20px;
             font-size: 0.85rem;
-            font-weight: 500;
+            font-weight: 600;
         }
 
         /* --- MAIN CONTAINER --- */
@@ -62,26 +64,26 @@
             align-items: center;
             justify-content: center;
             padding: 40px 20px;
-            animation: fadeIn 0.5s ease-in-out;
+            animation: fadeIn 0.4s ease-in-out;
         }
 
         .header-text { text-align: center; margin-bottom: 40px; }
-        h1 { font-size: 2.8rem; font-weight: 700; margin-bottom: 15px; letter-spacing: -1px; }
-        .subtitle { font-size: 1.1rem; color: var(--text-muted); max-width: 500px; margin: 0 auto; line-height: 1.6; }
+        h1 { font-size: 2.5rem; font-weight: 700; margin-bottom: 12px; letter-spacing: -1px; }
+        .subtitle { font-size: 1.05rem; color: var(--text-muted); max-width: 550px; margin: 0 auto; line-height: 1.6; }
 
         /* --- BUTTONS --- */
         .btn {
             background-color: var(--primary);
             color: white;
             font-family: inherit;
-            font-size: 1.1rem;
+            font-size: 1.05rem;
             font-weight: 600;
-            padding: 16px 32px;
+            padding: 14px 28px;
             border: none;
-            border-radius: 12px;
+            border-radius: 10px;
             cursor: pointer;
             transition: all 0.2s ease;
-            box-shadow: 0 4px 12px rgba(244, 63, 94, 0.25);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -90,7 +92,7 @@
         .btn:hover { 
             background-color: var(--primary-hover); 
             transform: translateY(-2px); 
-            box-shadow: 0 6px 16px rgba(244, 63, 94, 0.3);
+            box-shadow: 0 6px 16px rgba(79, 70, 229, 0.35);
         }
         .btn:disabled { 
             background-color: #cbd5e1; 
@@ -103,15 +105,16 @@
             color: var(--text-muted);
             box-shadow: none;
             border: 1px solid var(--border-color);
+            margin-top: 12px;
         }
-        .btn-outline:hover { background: #f1f5f9; box-shadow: none; transform: translateY(-1px); color: var(--text-main); }
+        .btn-outline:hover { background: #f1f5f9; box-shadow: none; transform: none; color: var(--text-main); }
 
         /* --- WORKSPACE CARD --- */
         .workspace {
             background: var(--card-bg);
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px -10px rgba(0,0,0,0.05);
+            padding: 35px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.08);
             width: 100%;
             max-width: 550px;
             display: none;
@@ -120,27 +123,27 @@
 
         .file-info {
             background: var(--bg-color);
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 30px;
+            padding: 18px;
+            border-radius: 10px;
+            margin-bottom: 25px;
             border-left: 4px solid var(--primary);
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-        .file-details h3 { font-size: 1.1rem; margin-bottom: 4px; word-break: break-all; }
-        .file-details p { color: var(--text-muted); font-size: 0.9rem; }
-        .page-badge { background: #e0e7ff; color: #4338ca; font-weight: 600; padding: 8px 16px; border-radius: 8px; font-size: 0.9rem;}
+        .file-details h3 { font-size: 1.05rem; margin-bottom: 4px; word-break: break-all; }
+        .file-details p { color: var(--text-muted); font-size: 0.85rem; }
+        .page-badge { background: #f1f5f9; color: var(--text-main); font-weight: 600; padding: 6px 12px; border-radius: 6px; font-size: 0.9rem;}
 
         .input-group { margin-bottom: 25px; }
-        label { font-weight: 600; display: block; margin-bottom: 8px; font-size: 0.95rem; }
+        label { font-weight: 600; display: block; margin-bottom: 8px; font-size: 0.95rem; color: #334155;}
 
         input[type="text"] {
             width: 100%;
-            padding: 16px;
+            padding: 14px;
             font-size: 1.1rem;
             border: 2px solid var(--border-color);
-            border-radius: 12px;
+            border-radius: 10px;
             font-family: 'Inter', monospace;
             transition: all 0.2s;
             background: #f8fafc;
@@ -149,8 +152,40 @@
             border-color: var(--primary);
             background: #fff;
             outline: none;
-            box-shadow: 0 0 0 4px rgba(244, 63, 94, 0.1);
+            box-shadow: 0 0 0 4px var(--primary-light);
         }
+
+        /* --- RADIO BUTTONS (Orientation) --- */
+        .radio-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+        }
+        .radio-label {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: 0.2s;
+            background: #fff;
+        }
+        .radio-label:hover { background: #f8fafc; }
+        .radio-label input[type="radio"] { display: none; }
+        .radio-label svg { color: var(--text-muted); transition: 0.2s; }
+        
+        /* Active state for Radio */
+        .radio-label:has(input:checked) {
+            border-color: var(--primary);
+            background: var(--primary-light);
+            color: var(--primary-hover);
+        }
+        .radio-label:has(input:checked) svg { color: var(--primary-hover); }
 
         .help-text { font-size: 0.85rem; color: var(--text-muted); margin-top: 10px; line-height: 1.5; }
         .help-text b { color: var(--text-main); }
@@ -177,19 +212,19 @@
 <body>
 
     <nav class="navbar">
-        <div class="logo">PDF<span>Magic</span></div>
-        <div class="badge">Local & Secure</div>
+        <div class="logo">PDF<span>Flow</span></div>
+        <div class="badge">100% Local Tool</div>
     </nav>
 
     <div class="main-container">
         
         <div id="step1" class="header-text">
-            <h1>Rearrange PDF Pages</h1>
-            <p class="subtitle">Change page order instantly. Enter numbers out of bounds (e.g. 6 for a 5-page PDF) to auto-insert <b>blank pages</b> at that position.</p>
+            <h1>Smart PDF Reorder</h1>
+            <p class="subtitle">Rearrange pages effortlessly. Enter out-of-bound page numbers to automatically insert custom blank pages. Supports Encrypted PDFs.</p>
             <br>
             <button class="btn" onclick="document.getElementById('fileInput').click()">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                Select PDF File
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                Select PDF Document
             </button>
             <input type="file" id="fileInput" accept=".pdf" class="hidden">
         </div>
@@ -204,18 +239,34 @@
             </div>
 
             <div class="input-group">
-                <label for="orderInput">Define your custom page sequence:</label>
-                <input type="text" id="orderInput" placeholder="Example: 1, 2, 6, 4, 3">
+                <label for="orderInput">Define custom page sequence:</label>
+                <input type="text" id="orderInput" placeholder="e.g. 1, 2, 6, 4, 3">
                 <p class="help-text">
-                    * Separate numbers with commas.<br>
-                    * Note: If original has 5 pages, adding <b>'6'</b> will insert a blank page at that exact index.
+                    * Separate with commas.<br>
+                    * Add a number greater than total pages (e.g. <b>6</b>) to insert a blank page.
                 </p>
+            </div>
+
+            <div class="input-group">
+                <label>Blank Page Orientation:</label>
+                <div class="radio-group">
+                    <label class="radio-label">
+                        <input type="radio" name="pageOri" value="portrait" checked>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect></svg>
+                        Portrait
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="pageOri" value="landscape">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect></svg>
+                        Landscape
+                    </label>
+                </div>
             </div>
 
             <div id="errorMsg" class="error-msg"></div>
 
-            <button class="btn" id="processBtn" style="width: 100%; margin-bottom: 12px;">Generate New PDF</button>
-            <button class="btn btn-outline" onclick="location.reload()" style="width: 100%;">Cancel & Start Over</button>
+            <button class="btn" id="processBtn" style="width: 100%;">Create New PDF</button>
+            <button class="btn btn-outline" onclick="location.reload()" style="width: 100%;">Cancel</button>
         </div>
 
     </div>
@@ -235,56 +286,82 @@
 
     let currentPdfBytes = null;
     let totalPages = 0;
-    let firstPageDimensions = { width: 595.28, height: 841.89 }; // Default A4 size
+    let firstPageDimensions = { width: 595.28, height: 841.89 }; // A4 Default
+    let pdfPassword = undefined; // For handling encrypted PDFs
 
-    // 1. Handle File Selection
+    // 1. File Selection & Password Handling
     fileInput.addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (!file || file.type !== 'application/pdf') return;
 
         try {
             currentPdfBytes = await file.arrayBuffer();
-            const pdfDoc = await PDFDocument.load(currentPdfBytes);
+            let pdfDoc;
+            pdfPassword = undefined; // Reset password for new file
+
+            // Try loading without password
+            try {
+                pdfDoc = await PDFDocument.load(currentPdfBytes);
+            } catch (err) {
+                // Handle Encrypted PDF
+                if (err.message.toLowerCase().includes('encrypted')) {
+                    pdfPassword = prompt("🔒 This PDF is encrypted. Please enter the password to unlock it:");
+                    
+                    if (!pdfPassword) {
+                        alert("Password is required to edit this protected PDF.");
+                        fileInput.value = ''; // Reset input
+                        return;
+                    }
+                    
+                    // Try loading with password
+                    try {
+                        pdfDoc = await PDFDocument.load(currentPdfBytes, { password: pdfPassword });
+                    } catch (pwErr) {
+                        alert("❌ Incorrect password or unsupported encryption format.");
+                        fileInput.value = '';
+                        return;
+                    }
+                } else {
+                    throw err; 
+                }
+            }
+
             totalPages = pdfDoc.getPageCount();
 
-            // Save dimensions of the 1st page to use for generating blank pages later
+            // Store 1st page size to calculate portrait/landscape dimensions later
             if (totalPages > 0) {
                 firstPageDimensions = pdfDoc.getPage(0).getSize();
             }
 
-            // Update UI
             fileNameEl.textContent = file.name;
             pageCountEl.textContent = totalPages;
             
             step1.classList.add('hidden');
             step2.style.display = 'block';
             
-            // Set default valid input (1 to N)
+            // Set default sequence
             orderInput.value = Array.from({length: totalPages}, (_, i) => i + 1).join(', ');
 
         } catch (err) {
             console.error(err);
-            alert("Error loading PDF. Please try another valid PDF file.");
+            alert("Error loading PDF. Make sure the file is not corrupted.");
         }
     });
 
-    // 2. Process Button
+    // 2. Processing
     processBtn.addEventListener('click', async () => {
         const inputStr = orderInput.value.trim();
         errorMsg.style.display = 'none';
 
         if (!inputStr) { showError("Please enter a page sequence."); return; }
 
-        // Clean input: remove brackets and spaces, split by comma
         const cleanStr = inputStr.replace(/[^\d,]/g, ''); 
         if (!cleanStr) { showError("Invalid format. Use numbers separated by commas."); return; }
 
-        // Convert to array of numbers
         const requestedPages = cleanStr.split(',')
             .filter(item => item.trim() !== '')
             .map(num => parseInt(num.trim()));
 
-        // Check for 0 or negative numbers (Not allowed)
         if (requestedPages.some(p => p < 1)) {
             showError("Page numbers must be 1 or greater.");
             return;
@@ -295,45 +372,54 @@
 
         try {
             const newPdf = await PDFDocument.create();
-            const sourcePdf = await PDFDocument.load(currentPdfBytes);
+            
+            // Load source PDF again, utilizing the password if it was encrypted
+            const sourcePdf = await PDFDocument.load(currentPdfBytes, { password: pdfPassword });
 
-            // 1. Find which pages actually exist in the original PDF
-            const validIndices = requestedPages
-                .filter(p => p <= totalPages)
-                .map(p => p - 1); // 0-based index for pdf-lib
+            // Fetch selected orientation
+            const orientation = document.querySelector('input[name="pageOri"]:checked').value;
 
-            // 2. Copy all valid pages in one go (more efficient)
+            // Prepare valid pages from source
+            const validIndices = requestedPages.filter(p => p <= totalPages).map(p => p - 1);
+            
             let copiedPages = [];
             if (validIndices.length > 0) {
                 copiedPages = await newPdf.copyPages(sourcePdf, validIndices);
             }
 
-            // 3. Assemble the new document maintaining the user's exact sequence
+            // Assemble new PDF
             let copiedIndex = 0;
             for (let i = 0; i < requestedPages.length; i++) {
                 const pageNum = requestedPages[i];
 
                 if (pageNum <= totalPages) {
-                    // Valid page -> add from copied array
+                    // It's a real page from the original PDF
                     newPdf.addPage(copiedPages[copiedIndex]);
                     copiedIndex++;
                 } else {
-                    // Out of bounds page -> Generate BLANK PAGE based on original PDF's dimensions
-                    newPdf.addPage([firstPageDimensions.width, firstPageDimensions.height]);
+                    // It's an out-of-bound page -> Insert Blank Page
+                    let w = firstPageDimensions.width;
+                    let h = firstPageDimensions.height;
+                    
+                    // Logic to ensure correct orientation based on user selection
+                    let blankWidth = orientation === 'portrait' ? Math.min(w, h) : Math.max(w, h);
+                    let blankHeight = orientation === 'portrait' ? Math.max(w, h) : Math.min(w, h);
+
+                    newPdf.addPage([blankWidth, blankHeight]);
                 }
             }
 
-            // Save and Download
+            // Download
             const pdfBytes = await newPdf.save();
-            download(pdfBytes, "Reordered_Magical.pdf");
+            download(pdfBytes, "Reordered_Smart_PDF.pdf");
 
-            processBtn.innerText = "Generate New PDF";
+            processBtn.innerText = "Create New PDF";
             processBtn.disabled = false;
             
         } catch (err) {
             console.error(err);
-            showError("An error occurred while processing.");
-            processBtn.innerText = "Generate New PDF";
+            showError("An error occurred while creating the PDF.");
+            processBtn.innerText = "Create New PDF";
             processBtn.disabled = false;
         }
     });
