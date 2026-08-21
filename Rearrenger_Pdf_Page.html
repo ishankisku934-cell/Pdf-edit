@@ -3,33 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reorder PDF Pages - Local Tool</title>
+    <title>Advanced PDF Reorder Tool</title>
     
+    <!-- Google Fonts for Modern Typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- PDF-Lib Library -->
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 
     <style>
-        /* --- RESET & BASICS --- */
+        /* --- RESET & VARIABLES --- */
+        :root {
+            --primary: #f43f5e; /* Modern Rose/Red */
+            --primary-hover: #e11d48;
+            --bg-color: #f8fafc;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --card-bg: #ffffff;
+            --border-color: #e2e8f0;
+        }
+
         * { box-sizing: border-box; margin: 0; padding: 0; }
+
         body {
-            font-family: 'Segoe UI', Helvetica, Arial, sans-serif;
-            background-color: #f3f0ec;
-            color: #333;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
             display: flex;
             flex-direction: column;
-            height: 100vh;
+            min-height: 100vh;
         }
 
         /* --- NAVBAR --- */
         .navbar {
-            background-color: white;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            padding: 15px 40px;
+            background-color: var(--card-bg);
+            padding: 20px 40px;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            border-bottom: 1px solid var(--border-color);
         }
-        .logo { font-weight: 800; font-size: 1.5rem; color: #333; }
-        .logo span { color: #e5322d; }
+        .logo { font-weight: 700; font-size: 1.5rem; letter-spacing: -0.5px; }
+        .logo span { color: var(--primary); }
+        .badge {
+            background: #f1f5f9;
+            color: var(--text-muted);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
 
         /* --- MAIN CONTAINER --- */
         .main-container {
@@ -38,104 +61,161 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            text-align: center;
-            padding: 20px;
+            padding: 40px 20px;
+            animation: fadeIn 0.5s ease-in-out;
         }
 
-        h1 { font-size: 2.5rem; margin-bottom: 15px; color: #333; }
-        .subtitle { font-size: 1.1rem; color: #666; margin-bottom: 40px; max-width: 600px; }
+        .header-text { text-align: center; margin-bottom: 40px; }
+        h1 { font-size: 2.8rem; font-weight: 700; margin-bottom: 15px; letter-spacing: -1px; }
+        .subtitle { font-size: 1.1rem; color: var(--text-muted); max-width: 500px; margin: 0 auto; line-height: 1.6; }
 
         /* --- BUTTONS --- */
-        .btn-red {
-            background-color: #e5322d;
+        .btn {
+            background-color: var(--primary);
             color: white;
-            font-size: 1.2rem;
-            font-weight: 700;
-            padding: 20px 50px;
+            font-family: inherit;
+            font-size: 1.1rem;
+            font-weight: 600;
+            padding: 16px 32px;
             border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: transform 0.2s;
-            box-shadow: 0 4px 15px rgba(229, 50, 45, 0.3);
-        }
-        .btn-red:hover { background-color: #d62c27; transform: translateY(-2px); }
-        .btn-red:disabled { background-color: #ccc; cursor: not-allowed; transform: none; box-shadow: none;}
-
-        /* --- WORKSPACE (Hidden initially) --- */
-        .workspace {
-            background: white;
-            padding: 40px;
             border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(244, 63, 94, 0.25);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn:hover { 
+            background-color: var(--primary-hover); 
+            transform: translateY(-2px); 
+            box-shadow: 0 6px 16px rgba(244, 63, 94, 0.3);
+        }
+        .btn:disabled { 
+            background-color: #cbd5e1; 
+            cursor: not-allowed; 
+            transform: none; 
+            box-shadow: none;
+        }
+        .btn-outline {
+            background: transparent;
+            color: var(--text-muted);
+            box-shadow: none;
+            border: 1px solid var(--border-color);
+        }
+        .btn-outline:hover { background: #f1f5f9; box-shadow: none; transform: translateY(-1px); color: var(--text-main); }
+
+        /* --- WORKSPACE CARD --- */
+        .workspace {
+            background: var(--card-bg);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px -10px rgba(0,0,0,0.05);
             width: 100%;
-            max-width: 600px;
+            max-width: 550px;
             display: none;
-            text-align: left;
+            border: 1px solid var(--border-color);
         }
 
         .file-info {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 25px;
-            border-left: 5px solid #e5322d;
+            background: var(--bg-color);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            border-left: 4px solid var(--primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
+        .file-details h3 { font-size: 1.1rem; margin-bottom: 4px; word-break: break-all; }
+        .file-details p { color: var(--text-muted); font-size: 0.9rem; }
+        .page-badge { background: #e0e7ff; color: #4338ca; font-weight: 600; padding: 8px 16px; border-radius: 8px; font-size: 0.9rem;}
 
-        label { font-weight: bold; display: block; margin-bottom: 10px; }
+        .input-group { margin-bottom: 25px; }
+        label { font-weight: 600; display: block; margin-bottom: 8px; font-size: 0.95rem; }
 
         input[type="text"] {
             width: 100%;
-            padding: 15px;
+            padding: 16px;
             font-size: 1.1rem;
-            border: 2px solid #ddd;
-            border-radius: 6px;
-            margin-bottom: 10px;
-            font-family: monospace;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            font-family: 'Inter', monospace;
+            transition: all 0.2s;
+            background: #f8fafc;
         }
-        
         input[type="text"]:focus {
-            border-color: #e5322d;
+            border-color: var(--primary);
+            background: #fff;
             outline: none;
+            box-shadow: 0 0 0 4px rgba(244, 63, 94, 0.1);
         }
 
-        .help-text { font-size: 0.9rem; color: #888; margin-bottom: 25px; }
+        .help-text { font-size: 0.85rem; color: var(--text-muted); margin-top: 10px; line-height: 1.5; }
+        .help-text b { color: var(--text-main); }
 
-        .hidden { display: none; }
-        
-        .error-msg { color: #e5322d; margin-top: 10px; font-weight: bold; display: none;}
+        .hidden { display: none !important; }
+        .error-msg { 
+            background: #fef2f2; 
+            color: #b91c1c; 
+            padding: 12px; 
+            border-radius: 8px; 
+            margin-bottom: 20px; 
+            font-size: 0.9rem; 
+            font-weight: 500; 
+            display: none; 
+            border: 1px solid #fecaca;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
 
     <nav class="navbar">
-        <div class="logo">Reorder <span>PDF</span></div>
-        <div style="font-size: 0.9rem; color: #666;">Local Secure Tool</div>
+        <div class="logo">PDF<span>Magic</span></div>
+        <div class="badge">Local & Secure</div>
     </nav>
 
     <div class="main-container">
         
-        <div id="step1">
+        <div id="step1" class="header-text">
             <h1>Rearrange PDF Pages</h1>
-            <p class="subtitle">Change the order of your PDF pages or delete pages by defining a custom sequence.</p>
-            <button class="btn-red" onclick="document.getElementById('fileInput').click()">Select PDF File</button>
+            <p class="subtitle">Change page order instantly. Enter numbers out of bounds (e.g. 6 for a 5-page PDF) to auto-insert <b>blank pages</b> at that position.</p>
+            <br>
+            <button class="btn" onclick="document.getElementById('fileInput').click()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                Select PDF File
+            </button>
             <input type="file" id="fileInput" accept=".pdf" class="hidden">
         </div>
 
         <div id="step2" class="workspace">
             <div class="file-info">
-                <h3 id="fileName">document.pdf</h3>
-                <p style="color:#666; margin-top:5px;">Total Pages: <strong id="pageCount">0</strong></p>
+                <div class="file-details">
+                    <h3 id="fileName">document.pdf</h3>
+                    <p>Ready to process</p>
+                </div>
+                <div class="page-badge"><span id="pageCount">0</span> Pages</div>
             </div>
 
-            <label for="orderInput">Enter page order:</label>
-            <input type="text" id="orderInput" placeholder="Example: 1, 5, 2, 8, 3">
-            <p class="help-text">Separate numbers with commas. Example: <b>1, 3, 2</b> will create a PDF with Page 1, then Page 3, then Page 2.</p>
+            <div class="input-group">
+                <label for="orderInput">Define your custom page sequence:</label>
+                <input type="text" id="orderInput" placeholder="Example: 1, 2, 6, 4, 3">
+                <p class="help-text">
+                    * Separate numbers with commas.<br>
+                    * Note: If original has 5 pages, adding <b>'6'</b> will insert a blank page at that exact index.
+                </p>
+            </div>
 
-            <button class="btn-red" id="processBtn" style="width: 100%; padding: 15px;">Reorder PDF</button>
-            
             <div id="errorMsg" class="error-msg"></div>
 
-            <button onclick="location.reload()" style="background:none; border:none; color:#666; width:100%; margin-top:15px; cursor:pointer;">Cancel</button>
+            <button class="btn" id="processBtn" style="width: 100%; margin-bottom: 12px;">Generate New PDF</button>
+            <button class="btn btn-outline" onclick="location.reload()" style="width: 100%;">Cancel & Start Over</button>
         </div>
 
     </div>
@@ -155,6 +235,7 @@
 
     let currentPdfBytes = null;
     let totalPages = 0;
+    let firstPageDimensions = { width: 595.28, height: 841.89 }; // Default A4 size
 
     // 1. Handle File Selection
     fileInput.addEventListener('change', async (e) => {
@@ -162,27 +243,28 @@
         if (!file || file.type !== 'application/pdf') return;
 
         try {
-            // Read file
             currentPdfBytes = await file.arrayBuffer();
-            
-            // Load header to get page count
             const pdfDoc = await PDFDocument.load(currentPdfBytes);
             totalPages = pdfDoc.getPageCount();
+
+            // Save dimensions of the 1st page to use for generating blank pages later
+            if (totalPages > 0) {
+                firstPageDimensions = pdfDoc.getPage(0).getSize();
+            }
 
             // Update UI
             fileNameEl.textContent = file.name;
             pageCountEl.textContent = totalPages;
             
-            // Switch screens
             step1.classList.add('hidden');
             step2.style.display = 'block';
             
-            // Set default valid input
+            // Set default valid input (1 to N)
             orderInput.value = Array.from({length: totalPages}, (_, i) => i + 1).join(', ');
 
         } catch (err) {
             console.error(err);
-            alert("Error loading PDF. Please try another file.");
+            alert("Error loading PDF. Please try another valid PDF file.");
         }
     });
 
@@ -191,66 +273,67 @@
         const inputStr = orderInput.value.trim();
         errorMsg.style.display = 'none';
 
-        if (!inputStr) {
-            showError("Please enter page numbers.");
-            return;
-        }
+        if (!inputStr) { showError("Please enter a page sequence."); return; }
 
-        // Clean input: remove brackets ( ) and spaces, split by comma
-        // Regex matches anything that isn't a digit or a comma
+        // Clean input: remove brackets and spaces, split by comma
         const cleanStr = inputStr.replace(/[^\d,]/g, ''); 
-        
-        if (!cleanStr) {
-            showError("Invalid format. Use numbers separated by commas.");
-            return;
-        }
+        if (!cleanStr) { showError("Invalid format. Use numbers separated by commas."); return; }
 
         // Convert to array of numbers
         const requestedPages = cleanStr.split(',')
-            .filter(item => item.trim() !== '') // Remove empty items
+            .filter(item => item.trim() !== '')
             .map(num => parseInt(num.trim()));
 
-        // Validate pages
-        const invalidPages = requestedPages.filter(p => p < 1 || p > totalPages);
-        if (invalidPages.length > 0) {
-            showError(`Invalid page numbers: ${invalidPages.join(', ')}. Max page is ${totalPages}.`);
+        // Check for 0 or negative numbers (Not allowed)
+        if (requestedPages.some(p => p < 1)) {
+            showError("Page numbers must be 1 or greater.");
             return;
         }
 
-        if (requestedPages.length === 0) {
-            showError("No valid pages found.");
-            return;
-        }
-
-        // Start Processing
         processBtn.innerText = "Processing...";
         processBtn.disabled = true;
 
         try {
-            // Create new PDF
             const newPdf = await PDFDocument.create();
             const sourcePdf = await PDFDocument.load(currentPdfBytes);
 
-            // Convert 1-based user input to 0-based index
-            const pageIndices = requestedPages.map(p => p - 1);
+            // 1. Find which pages actually exist in the original PDF
+            const validIndices = requestedPages
+                .filter(p => p <= totalPages)
+                .map(p => p - 1); // 0-based index for pdf-lib
 
-            // Copy pages
-            const copiedPages = await newPdf.copyPages(sourcePdf, pageIndices);
+            // 2. Copy all valid pages in one go (more efficient)
+            let copiedPages = [];
+            if (validIndices.length > 0) {
+                copiedPages = await newPdf.copyPages(sourcePdf, validIndices);
+            }
 
-            // Add them to the new document
-            copiedPages.forEach(page => newPdf.addPage(page));
+            // 3. Assemble the new document maintaining the user's exact sequence
+            let copiedIndex = 0;
+            for (let i = 0; i < requestedPages.length; i++) {
+                const pageNum = requestedPages[i];
+
+                if (pageNum <= totalPages) {
+                    // Valid page -> add from copied array
+                    newPdf.addPage(copiedPages[copiedIndex]);
+                    copiedIndex++;
+                } else {
+                    // Out of bounds page -> Generate BLANK PAGE based on original PDF's dimensions
+                    newPdf.addPage([firstPageDimensions.width, firstPageDimensions.height]);
+                }
+            }
 
             // Save and Download
             const pdfBytes = await newPdf.save();
-            download(pdfBytes, "reordered_document.pdf");
+            download(pdfBytes, "Reordered_Magical.pdf");
 
-            processBtn.innerText = "Reorder PDF";
+            processBtn.innerText = "Generate New PDF";
             processBtn.disabled = false;
             
         } catch (err) {
             console.error(err);
             showError("An error occurred while processing.");
-            processBtn.innerText = "Reorder PDF";
+            processBtn.innerText = "Generate New PDF";
             processBtn.disabled = false;
         }
     });
@@ -269,8 +352,10 @@
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
 </script>
 
 </body>
 </html>
+
