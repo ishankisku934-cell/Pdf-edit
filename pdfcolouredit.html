@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Document Filter & PDF Editor</title>
+    <!-- PDF প্রসেসিং এর জন্য লাইব্রেরি -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+    <!-- ইমেজ থেকে PDF বানানোর লাইব্রেরি -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --bg-light: #f4f7f6;
+            --text-dark: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+        }
+
+        h1 {
+            text-align: center;
+            color: #444;
+        }
+
+        .top-bar {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .file-input-container {
+            flex-grow: 1;
+        }
+
+        input[type="file"] {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .pagination-controls button, .action-btn {
+            padding: 10px 20px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+
+        .pagination-controls button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .pagination-controls button:hover:not(:disabled), .action-btn:hover {
+            background-color: #0056b3;
+        }
+        
+        .save-btn {
+            background-color: #28a745;
+        }
+        .save-btn:hover {
+            background-color: #218838;
+        }
+
+        /* প্রধান এডিটর লেআউট */
+        .main-container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: flex-start;
+        }
+
+        /* বাম পাশের কন্ট্রোল প্যানেল */
+        .controls-panel {
+            flex: 1;
+            min-width: 300px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        /* ডান পাশের প্রিভিউ এরিয়া */
+        .canvas-container {
+            flex: 2;
+            min-width: 300px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            text-align: center;
+            overflow: auto;
+            max-height: 80vh;
+        }
+
+        canvas {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        /* ফিল্টার বাটন এর স্টাইল (আপনার ছবির মতো) */
+        .filter-scroll-container {
+            display: flex;
+            overflow-x: auto;
+            gap: 10px;
+            padding: 10px 0;
+            margin-bottom: 20px;
+            scrollbar-width: thin;
+        }
+
+        .filter-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .filter-preview {
+            width: 70px;
+            height: 70px;
+            background-color: #eee;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            border: 3px solid transparent;
+            transition: border-color 0.2s;
+            /* ডিফল্ট আইকন বাPlaceholder */
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%23ccc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>');
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        .filter-btn.active .filter-preview {
+            border-color: var(--primary-color);
+        }
+
+        .filter-name {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        /* প্রো ব্যাজ (আপনার ছবির মতো) */
+        .pro-badge {
+             position: relative;
+        }
+        .pro-badge::after {
+            content: 'Pro';
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: linear-gradient(45deg, #ff00cc, #333399);
+            color: white;
+            font-size: 9px;
+            padding: 2px 5px;
+            border-radius: 4px;
+        }
+
+
+        /* স্লাইডার কন্ট্রোলস */
+        .slider-group {
+            margin-bottom: 15px;
+        }
+
+        .slider-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            font-size: 1.2em;
+            color: var(--primary-color);
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1>Advanced Document Filter & Editor</h1>
+    <p style="text-align: center; color: #666;">কালো বা অস্পষ্ট স্ক্যান করা ডকুমেন্টের জন্য বিশেষ ফিল্টার যুক্ত করা হয়েছে।</p>
+
+    <div class="top-bar">
+        <div class="file-input-container">
+            <input type="file" id="pdf-upload" accept=".pdf" />
+        </div>
+        <div class="pagination-controls">
+            <button id="prev-page" disabled>Previous</button>
+            <span id="page-info">Page <span id="current-page-num">0</span> of <span id="total-pages">0</span></span>
+            <button id="next-page" disabled>Next</button>
+        </div>
+         <button id="save-pdf-btn" class="action-btn save-btn" disabled>Save Full PDF (All Pages)</button>
+    </div>
+
+    <div class="main-container">
+        <!-- বাম পাশের কন্ট্রোল প্যানেল -->
+        <div class="controls-panel">
+            <h3>Color Filters (আপনার অনুরোধ অনুযায়ী)</h3>
+            
+            <!-- ফিল্টার বাটন এর তালিকা (স্ক্রল করা যাবে) -->
+            <div class="filter-scroll-container">
+                <!-- অরিজিনাল -->
+                <div class="filter-btn active" data-filter="original">
+                    <div class="filter-preview"></div>
+                    <span class="filter-name">Original</span>
+                </div>
+
+                 <!-- স্পেশাল ফিল্টার (কালো প্রিন্ট পরিষ্কার করার জন্য) -->
+                 <div class="filter-btn pro-badge" data-filter="smartEnhance">
+                    <div class="filter-preview" style="background-color: #e0e0e0;"></div>
+                    <span class="filter-name" style="font-weight:bold; color:red;">Smart Text Enhance</span>
+                </div>
+
+                <!-- আপনার পাঠানো ছবির ফিল্টার লিস্ট -->
+                <div class="filter-btn pro-badge" data-filter="vividLight">
+                    <div class="filter-preview"></div>
+                    <span class="filter-name">Vivid Light</span>
+                </div>
+                <div class="filter-btn pro-badge" data-filter="contrastBW">
+                    <div class="filter-preview" style="background-color: #555;"></div>
+                    <span class="filter-name">Contrast B&W</span>
+                </div>
+                <div class="filter-btn" data-filter="vibrant">
+                    <div class="filter-preview"></div>
+                    <span class="filter-name">Vibrant</span>
+                </div>
+                <div class="filter-btn" data-filter="softTone">
+                    <div class="filter-preview"></div>
+                    <span class="filter-name">Soft Tone</span>
+                </div>
+                <div class="filter-btn" data-filter="sharpBlack">
+                    <div class="filter-preview" style="background-color: #333;"></div>
+                    <span class="filter-name">Sharp black</span>
+                </div>
+                <div class="filter-btn" data-filter="ocvColor">
+                    <div class="filter-preview"></div>
+                    <span class="filter-name">OCVColor</span>
+                </div>
+                <div class="filter-btn" data-filter="bw">
+                    <div class="filter-preview" style="background-color: #777;"></div>
+                    <span class="filter-name">B&W</span>
+                </div>
+                 <div class="filter-btn" data-filter="carbonBlack">
+                    <div class="filter-preview" style="background-color: #222;"></div>
+                    <span class="filter-name">Carbon Black</span>
+                </div>
+                <div class="filter-btn" data-filter="ocvBlack">
+                    <div class="filter-preview" style="background-color: #000;"></div>
+                    <span class="filter-name">OCVBlack</span>
+                </div>
+                 <div class="filter-btn" data-filter="gray">
+                    <div class="filter-preview" style="background-color: #999;"></div>
+                    <span class="filter-name">Gray</span>
+                </div>
+                 <div class="filter-btn" data-filter="colorPop">
+                    <div class="filter-preview"></div>
+                    <span class="filter-name">Color Pop</span>
+                </div>
+
+            </div>
+
+            <h3>Manual Adjustments</h3>
+            <p style="font-size: 12px; color: #666;">"Smart Text Enhance" সিলেক্ট করে Threshold স্লাইডারটি ব্যবহার করুন সেরা রেজাল্ট পাওয়ার জন্য।</p>
+            
+            <div class="slider-group">
+                <label for="brightness">Brightness: <span id="val-brightness">0</span></label>
+                <input type="range" id="brightness" min="-100" max="100" value="0">
+            </div>
+            <div class="slider-group">
+                <label for="contrast">Contrast: <span id="val-contrast">0</span></label>
+                <input type="range" id="contrast" min="-100" max="100" value="0">
+            </div>
+            <div class="slider-group">
+                <label for="threshold">B&W Threshold (Cleaning): <span id="val-threshold">128</span></label>
+                <input type="range" id="threshold" min="0" max="255" value="128">
+            </div>
+             <button id="reset-btn" class="action-btn" style="background-color: #6c757d; width: 100%; margin-top: 10px;">Reset All</button>
+        </div>
+
+        <!-- ডান পাশের প্রিভিউ এরিয়া -->
+        <div class="canvas-container">
+             <p id="no-file-text">Please upload a PDF file to start editing.</p>
+            <canvas id="pdf-canvas"></canvas>
+        </div>
+    </div>
+
+    <div class="loading-overlay" id="loadingMsg">Processing... Please wait.</div>
+
+
+    <script>
+        // গ্লোবাল ভেরিয়েবল
+        let pdfDoc = null;
+        let pageNum = 1;
+        let pageRendering = false;
+        let pageNumPending = null;
+        let scale = 2.0; // ভালো কোয়ালিটির জন্য স্কেল বাড়ানো হয়েছে
+        let originalImageData = null; // আসল ছবির ডাটা সংরক্ষণের জন্য
+        const canvas = document.getElementById('pdf-canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+        // UI এলিমেন্ট
+        const pdfUpload = document.getElementById('pdf-upload');
+        const prevPageBtn = document.getElementById('prev-page');
+        const nextPageBtn = document.getElementById('next-page');
+        const currentPageSpan = document.getElementById('current-page-num');
+        const totalPagesSpan = document.getElementById('total-pages');
+        const loadingMsg = document.getElementById('loadingMsg');
+        const noFileText = document.getElementById('no-file-text');
+        const savePdfBtn = document.getElementById('save-pdf-btn');
+
+        // স্লাইডার এলিমেন্ট
+        const brightnessInput = document.getElementById('brightness');
+        const contrastInput = document.getElementById('contrast');
+        const thresholdInput = document.getElementById('threshold');
+        const resetBtn = document.getElementById('reset-btn');
+        let currentFilter = 'original';
+
+        // =========================================
+        // PDF লোডিং এবং রেন্ডারিং সেকশন
+        // =========================================
+
+        pdfUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file && file.type === 'application/pdf') {
+                const fileReader = new FileReader();
+                loadingMsg.style.display = 'flex';
+                fileReader.onload = function() {
+                    const typedarray = new Uint8Array(this.result);
+                    pdfjsLib.getDocument(typedarray).promise.then(function(pdfDoc_) {
+                        pdfDoc = pdfDoc_;
+                        totalPagesSpan.textContent = pdfDoc.numPages;
+                        pageNum = 1;
+                        renderPage(pageNum);
+                        noFileText.style.display = 'none';
+                        savePdfBtn.disabled = false;
+                        resetSliders();
+                    });
+                };
+                fileReader.readAsArrayBuffer(file);
+            }
+        });
+
+        function renderPage(num) {
+            pageRendering = true;
+            loadingMsg.style.display = 'flex';
+            
+            // আগের পেজের মেমোরি ক্লিয়ার করা
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            originalImageData = null;
+
+            pdfDoc.getPage(num).then(function(page) {
+                const viewport = page.getViewport({scale: scale});
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                const renderContext = {
+                    canvasContext: ctx,
+                    viewport: viewport
+                };
+                const renderTask = page.render(renderContext);
+
+                renderTask.promise.then(function() {
+                    pageRendering = false;
+                    loadingMsg.style.display = 'none';
+                    if (pageNumPending !== null) {
+                        renderPage(pageNumPending);
+                        pageNumPending = null;
+                    }
+                    // রেন্ডার হওয়ার পর আসল পিক্সেল ডাটা সংরক্ষণ করি
+                    originalImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    applyCurrentFilters(); // বর্তমান ফিল্টার প্রয়োগ করি
+                });
+            });
+
+            currentPageSpan.textContent = num;
+            updatePaginationButtons();
+        }
+
+        function queueRenderPage(num) {
+            if (pageRendering) {
+                pageNumPending = num;
+            } else {
+                renderPage(num);
+            }
+        }
+
+        function updatePaginationButtons() {
+            prevPageBtn.disabled = pageNum <= 1;
+            nextPageBtn.disabled = pageNum >= pdfDoc.numPages;
+        }
+
+        prevPageBtn.addEventListener('click', () => { if (pageNum > 1) queueRenderPage(--pageNum); });
+        nextPageBtn.addEventListener('click', () => { if (pageNum < pdfDoc.numPages) queueRenderPage(++pageNum); });
+
+
+        // =========================================
+        // ইমেজ প্রসেসিং এবং ফিল্টার সেকশন (Core Logic)
+        // =========================================
+
+        // ফিল্টার বাটন ক্লিক হ্যান্ডলার
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentFilter = this.dataset.filter;
+                applyPreset(currentFilter);
+            });
+        });
+
+        // স্লাইডার ইনপুট হ্যান্ডলার
+        [brightnessInput, contrastInput, thresholdInput].forEach(input => {
+            input.addEventListener('input', function() {
+                document.getElementById('val-' + this.id).textContent = this.value;
+                if (originalImageData) applyCurrentFilters();
+            });
+        });
+
+        resetBtn.addEventListener('click', resetSliders);
+
+        function resetSliders() {
+            brightnessInput.value = 0; document.getElementById('val-brightness').textContent = 0;
+            contrastInput.value = 0; document.getElementById('val-contrast').textContent = 0;
+            thresholdInput.value = 128; document.getElementById('val-threshold').textContent = 128;
+            currentFilter = 'original';
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('[data-filter="original"]').classList.add('active');
+            if (originalImageData) applyCurrentFilters();
+        }
+
+        // কোর ফিল্টার লজিক (যাতে সব পেজে এপ্লাই করা যায়)
+        function applyFilterLogic(imageData, filterName, brightness, contrast, thresholdVal) {
+            const data = imageData.data;
+            const contrastFactor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+
+            for (let i = 0; i < data.length; i += 4) {
+                let r = data[i];
+                let g = data[i + 1];
+                let b = data[i + 2];
+
+                const isGrayscaleFilter = ['smartEnhance', 'contrastBW', 'sharpBlack', 'bw', 'carbonBlack', 'ocvBlack', 'gray'].includes(filterName);
+                if (isGrayscaleFilter) {
+                    const gray = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                    r = g = b = gray;
+                }
+
+                r = contrastFactor * (r - 128) + 128 + brightness;
+                g = contrastFactor * (g - 128) + 128 + brightness;
+                b = contrastFactor * (b - 128) + 128 + brightness;
+
+                const isThresholdFilter = ['smartEnhance', 'sharpBlack', 'carbonBlack', 'ocvBlack', 'bw'].includes(filterName);
+                if (isThresholdFilter) {
+                     let intensity = (r + g + b) / 3;
+                     let finalVal = intensity < thresholdVal ? 0 : 255;
+                     r = g = b = finalVal;
+                }
+
+                if (['vividLight', 'vibrant', 'colorPop', 'ocvColor'].includes(filterName)) {
+                     const gray = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                     r = gray + (r - gray) * 1.5;
+                     g = gray + (g - gray) * 1.5;
+                     b = gray + (b - gray) * 1.5;
+                }
+                
+                data[i] = Math.min(255, Math.max(0, r));
+                data[i + 1] = Math.min(255, Math.max(0, g));
+                data[i + 2] = Math.min(255, Math.max(0, b));
+            }
+            return imageData;
+        }
+
+        // আসল ফিল্টার অ্যাপ্লাই করার ফাংশন (শুধুমাত্র প্রিভিউ এর জন্য)
+        function applyCurrentFilters() {
+            if (!originalImageData) return;
+
+            loadingMsg.style.display = 'flex'; 
+
+            // UI আপডেট হওয়ার সুযোগ দেওয়ার জন্য setTimeout
+            setTimeout(() => {
+                const processedImageData = new ImageData(
+                    new Uint8ClampedArray(originalImageData.data),
+                    originalImageData.width,
+                    originalImageData.height
+                );
+
+                const brightness = parseInt(brightnessInput.value);
+                const contrast = parseInt(contrastInput.value);
+                const thresholdVal = parseInt(thresholdInput.value);
+
+                applyFilterLogic(processedImageData, currentFilter, brightness, contrast, thresholdVal);
+
+                ctx.putImageData(processedImageData, 0, 0);
+                loadingMsg.style.display = 'none';
+            }, 10);
+        }
+
+        // =========================================
+        // PDF সেভ করার সেকশন (সম্পূর্ণ PDF একসাথে)
+        // =========================================
+        const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));
+
+        savePdfBtn.addEventListener('click', async function() {
+            if (!pdfDoc) return;
+            
+            loadingMsg.style.display = 'flex';
+            loadingMsg.textContent = "Preparing to save full PDF...";
+
+            // UI আপডেট হতে একটু সময় দিচ্ছি
+            await yieldToMain();
+
+            try {
+                const { jsPDF } = window.jspdf;
+                let doc = null;
+                
+                const brightness = parseInt(brightnessInput.value);
+                const contrast = parseInt(contrastInput.value);
+                const thresholdVal = parseInt(thresholdInput.value);
+
+                // ব্যাকগ্রাউন্ডে প্রসেস করার জন্য একটি লুকানো ক্যানভাস
+                const offCanvas = document.createElement('canvas');
+                const offCtx = offCanvas.getContext('2d', { willReadFrequently: true });
+
+                for (let i = 1; i <= pdfDoc.numPages; i++) {
+                    loadingMsg.textContent = `Processing Page ${i} of ${pdfDoc.numPages}... (Please wait)`;
+                    await yieldToMain(); // লোডিং টেক্সট আপডেট করার জন্য
+
+                    const page = await pdfDoc.getPage(i);
+                    const viewport = page.getViewport({scale: scale});
+                    
+                    offCanvas.width = viewport.width;
+                    offCanvas.height = viewport.height;
+
+                    await page.render({canvasContext: offCtx, viewport: viewport}).promise;
+
+                    const pageImageData = offCtx.getImageData(0, 0, offCanvas.width, offCanvas.height);
+                    applyFilterLogic(pageImageData, currentFilter, brightness, contrast, thresholdVal);
+                    offCtx.putImageData(pageImageData, 0, 0);
+
+                    const imgData = offCanvas.toDataURL('image/jpeg', 0.9);
+                    let pdfWidth = offCanvas.width;
+                    let pdfHeight = offCanvas.height;
+                    let orientation = pdfWidth > pdfHeight ? 'l' : 'p';
+
+                    if (i === 1) {
+                        doc = new jsPDF({ orientation: orientation, unit: 'px', format: [pdfWidth, pdfHeight] });
+                    } else {
+                        doc.addPage([pdfWidth, pdfHeight], orientation);
+                    }
+                    
+                    doc.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+                }
+
+                loadingMsg.textContent = "Downloading PDF...";
+                await yieldToMain();
+                doc.save('edited_full_document.pdf');
+
+            } catch (error) {
+                console.error("Error generating PDF:", error);
+                alert("An error occurred while generating the PDF.");
+            } finally {
+                loadingMsg.style.display = 'none';
+                loadingMsg.textContent = "Processing... Please wait.";
+            }
+        });
+
+    </script>
+</body>
+</html>
