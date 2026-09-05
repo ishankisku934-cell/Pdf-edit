@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Page Matrix Calculator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page Matrix Calculator (Updated with X)</title>
   <style>
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -32,6 +33,7 @@
       display: block;
       font-size: 14px;
       margin-bottom: 4px;
+      font-weight: 500;
     }
     input[type="number"] {
       width: 100%;
@@ -43,7 +45,7 @@
     }
     button {
       margin-top: 4px;
-      padding: 8px 16px;
+      padding: 10px 18px;
       border-radius: 6px;
       border: none;
       cursor: pointer;
@@ -51,9 +53,10 @@
       font-weight: 600;
       background: #2563eb;
       color: white;
+      transition: background 0.2s;
     }
     button:hover {
-      opacity: 0.9;
+      background: #1d4ed8;
     }
     .result-box {
       margin-top: 16px;
@@ -61,6 +64,7 @@
       border-radius: 8px;
       background: #f0f4ff;
       font-size: 14px;
+      line-height: 1.5;
     }
     .text-output {
       background: #fff7e6;
@@ -72,24 +76,11 @@
       font-family: Consolas, monospace;
       border: 1px solid #ffd28a;
     }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 16px;
-      font-size: 13px;
-    }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 6px 8px;
-      text-align: center;
-    }
-    th {
-      background: #f3f3f3;
-    }
     .error {
       color: #b91c1c;
       margin-top: 8px;
       font-size: 13px;
+      font-weight: 500;
     }
   </style>
 </head>
@@ -101,15 +92,15 @@
     <div class="grid">
       <div>
         <label>M (Columns)</label>
-        <input type="number" id="rows" min="1" step="1" />
+        <input type="number" id="rows" min="1" step="1" placeholder="e.g. 2" />
       </div>
       <div>
-        <label>N (Raws)</label>
-        <input type="number" id="cols" min="1" step="1" />
+        <label>N (Rows)</label>
+        <input type="number" id="cols" min="1" step="1" placeholder="e.g. 2" />
       </div>
       <div>
         <label>T (Total Pages)</label>
-        <input type="number" id="total" min="1" step="1" />
+        <input type="number" id="total" min="1" step="1" placeholder="e.g. 10" />
       </div>
     </div>
 
@@ -117,49 +108,65 @@
     <div id="error" class="error"></div>
     <div id="summary" class="result-box" style="display:none;"></div>
     <div id="textOutput" class="text-output" style="display:none;"></div>
-    <div id="table-wrapper"></div>
   </div>
 
 <script>
 function calculate() {
-
   const errEl = document.getElementById("error");
   const summaryEl = document.getElementById("summary");
-  const tableWrapper = document.getElementById("table-wrapper");
   const textOutput = document.getElementById("textOutput");
 
+  // Reset UI
   errEl.textContent = "";
   textOutput.style.display = "none";
-  tableWrapper.innerHTML = "";
+  summaryEl.style.display = "none";
 
+  // Get Input Values
   const M = Number(document.getElementById("rows").value);
   const N = Number(document.getElementById("cols").value);
   const T = Number(document.getElementById("total").value);
 
+  // Validate Inputs
   if (M <= 0 || N <= 0 || T <= 0) {
-    errEl.textContent = "Enter valid positive numbers.";
+    errEl.textContent = "Please enter valid positive numbers.";
     return;
   }
 
-  const copies = M * N;
-  const raw = T / copies;
-  let G = Number.isInteger(raw) ? raw : Math.floor(raw) + 1;
+  const copies = M * N; // M*N
+  
+  // X = Smallest multiple of (M*N) that is >= T
+  const X = Math.ceil(T / copies) * copies;
+  
+  // Variables as per user conditions
+  const P = X - T;         // P = X - T
+  const l = copies - P;    // From T + (M*N - l) = X => M*N - l = P => l = M*N - P
+  
+  // G is now strictly dependent on X
+  const G = X / copies; 
 
+  // Displaying the calculated variables to verify the math
   summaryEl.style.display = "block";
   summaryEl.innerHTML =
-    `M=${M}, N=${N}, T=${T}<br>` +
-    `Copies=${copies}, G=${G}`;
+    `<strong>Inputs:</strong> M = ${M}, N = ${N}, T = ${T}<br>` +
+    `<strong>Calculations:</strong> Copies (M*N) = ${copies}, <span style="color:#2563eb; font-weight:bold;">X = ${X}</span><br>` +
+    `<strong>Conditions Met:</strong> P = ${P}, l = ${l}, G = ${G}`;
 
   let outputText = "";
   const matrixRows = [];
-  const blockSize = copies / N;
+  const blockSize = copies / N; 
 
+  // Loop running based on G (which is X / copies)
   for (let p = 1; p <= G; p++) {
     const row = [];
 
     for (let k = 1; k <= copies; k++) {
       const v = p + (k - 1) * G;
-      row.push(v > T ? (T + 1) : v);
+      
+      // পূর্বে এখানে T ব্যবহৃত হতো (v > T ? T+1 : v) 
+      // এখন T এর জায়গায় সম্পূর্ণভাবে X ব্যবহার করা হলো। 
+      // যেহেতু সিকোয়েন্সটি এক্সাক্টলি X পর্যন্তই যাবে, তাই (X + 1) প্রিন্ট হওয়ার কোনো সুযোগ নেই, 
+      // তবুও লজিকের স্ট্রাকচারটি আপনার কথামতো হুবহু রাখা হলো।
+      row.push(v > X ? (X + 1) : v); 
     }
 
     // *** EVEN ROW FLIPPING LOGIC ***
@@ -173,6 +180,7 @@ function calculate() {
     }
   }
 
+  // Formatting output
   matrixRows.forEach(r => {
     outputText += r.join(", ") + ",\n";
   });
