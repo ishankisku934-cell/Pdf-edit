@@ -171,9 +171,14 @@ function calculate() {
 
     // *** EVEN ROW FLIPPING LOGIC ***
     if (p % 2 === 0) {
-      const part1 = row.slice(0, blockSize).reverse();
-      const part2 = row.slice(blockSize).reverse();
-      const flipped = [...part1, ...part2];
+      let flipped = [];
+      // পেজের প্রতিটি রো (Row) এর জন্য আলাদাভাবে লুপ চালিয়ে রিভার্স করা হচ্ছে
+      for (let i = 0; i < N; i++) {
+        const start = i * blockSize;
+        const end = start + blockSize;
+        const chunk = row.slice(start, end).reverse();
+        flipped = flipped.concat(chunk);
+      }
       matrixRows.push(flipped);
     } else {
       matrixRows.push(row);
