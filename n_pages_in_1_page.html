@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -295,6 +295,18 @@
             const originalPdf = await PDFLib.PDFDocument.load(arrayBuffer);
             const originalPages = originalPdf.getPages();
             
+            // --- FIX FOR BLANK PAGES CREATED BY REARRANGER ---
+            // Completely empty pages lack a content stream, which causes pdf-lib's `embedPage` to crash.
+            // By drawing an invisible tiny element, we force the content stream to initialize.
+            originalPages.forEach(page => {
+                try {
+                    page.drawRectangle({ x: 0, y: 0, width: 0, height: 0, opacity: 0 });
+                } catch(e) {
+                    console.warn("Blank page fix bypassed", e);
+                }
+            });
+            // -------------------------------------------------
+
             const newPdf = await PDFLib.PDFDocument.create();
             const helveticaFont = await newPdf.embedFont(PDFLib.StandardFonts.Helvetica);
             
