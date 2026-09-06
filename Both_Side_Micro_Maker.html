@@ -157,12 +157,19 @@
         button.main-btn:disabled { background-color: #cbd5e1; color: #fff; cursor: not-allowed; box-shadow: none; transform: none;}
         
         #status { margin-top: 15px; font-size: 14px; text-align: center; font-weight: bold; }
-        #download-link {
-            display: none; text-align: center; margin-top: 15px; background: var(--primary);
-            color: var(--secondary); padding: 14px; text-decoration: none; border-radius: 6px; 
-            font-weight: bold; letter-spacing: 0.5px;
+        
+        /* New Action Bar styles */
+        #action-bar {
+            display: none; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 15px; 
+            margin-top: 20px;
         }
-        #download-link:hover { background: var(--primary-hover); }
+        .save-btn { background-color: var(--primary) !important; color: white !important; margin-top: 0 !important; }
+        .save-btn:hover { background-color: var(--primary-hover) !important; }
+        .print-btn { background-color: var(--secondary) !important; color: var(--primary) !important; margin-top: 0 !important; }
+        .print-btn:hover { background-color: var(--secondary-hover) !important; color: white !important;}
+
     </style>
 </head>
 <body>
@@ -303,7 +310,12 @@
 
     <button id="convert-btn" class="main-btn" onclick="processSelectedFiles()">Convert & Optimize PDFs</button>
     <div id="status"></div>
-    <a id="download-link">Download Output</a>
+    
+    <!-- NEW ACTION BAR: SAVE & PRINT -->
+    <div id="action-bar">
+        <button id="btn-download" class="main-btn save-btn" onclick="triggerDownload()">💾 Save File(s)</button>
+        <button id="btn-print" class="main-btn print-btn" onclick="triggerPrint()">🖨️ Print Document</button>
+    </div>
 </div>
 
 <script>
@@ -327,14 +339,12 @@
     // ANTIVIRUS FIX: Generates a perfectly valid blank page without suspicious 0x0 invisible blocks
     function createSafeBlankPage(pdfDoc, width, height) {
         const page = pdfDoc.addPage([width, height]);
-        // USER REQUEST: Default margin (20pt) added only to blank pages.
-        // This gives the blank page actual structural content to bypass AntiVirus heuristics.
         page.drawRectangle({
             x: 20, 
             y: 20, 
             width: Math.max(1, width - 40), 
             height: Math.max(1, height - 40), 
-            color: PDFLib.rgb(1, 1, 1) // White color so it remains invisible to the user
+            color: PDFLib.rgb(1, 1, 1) 
         });
         return page;
     }
@@ -343,6 +353,11 @@
     const dropZone = document.getElementById('dropZone');
     const fileInput = document.getElementById('pdf-upload');
     const fileListEl = document.getElementById('fileList');
+
+    // Globals for Save & Print Action
+    let finalOutputUrl = null;
+    let finalOutputFilename = null;
+    let finalOutputType = null;
 
     dropZone.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
@@ -368,6 +383,10 @@
         });
         fileInput.value = '';
         applySort();
+        
+        // Hide action bar when new files are added
+        document.getElementById('action-bar').style.display = 'none';
+        document.getElementById('status').innerText = '';
     }
 
     function renderList() {
@@ -409,13 +428,17 @@
     window.removeItem = function(id) {
         selectedFiles = selectedFiles.filter(item => item.id !== id);
         renderList();
-    };
+        document.getElementById('action-bar').style.display = 'none';
+        document.getElementById('status').innerText = '';
+    }
 
     window.clearAllFiles = function() {
         if (selectedFiles.length > 0 && confirm("Clear all selected files?")) {
             selectedFiles = [];
             document.getElementById('sortSelect').value = 'manual';
             renderList();
+            document.getElementById('action-bar').style.display = 'none';
+            document.getElementById('status').innerText = '';
         }
     };
 
@@ -465,11 +488,12 @@
 
         const convertBtn = document.getElementById('convert-btn');
         const statusDiv = document.getElementById('status');
-        const downloadLink = document.getElementById('download-link');
+        const actionBar = document.getElementById('action-bar');
+        const printBtn = document.getElementById('btn-print');
         const mode = document.querySelector('input[name="processMode"]:checked').value;
 
         convertBtn.disabled = true;
-        downloadLink.style.display = 'none';
+        actionBar.style.display = 'none';
         
         try {
             if (mode === 'separate') {
@@ -487,12 +511,9 @@
                     
                     const pdfBytes = await generateMicroPDFBytes(originalPdf, filenameNoExt);
                     
-                    // Windows Policy Fix 1: ফাইলের নামে উইন্ডোজের জন্য ক্ষতিকর কোনো ক্যারেক্টার থাকলে তা রিমুভ করা
                     let safeFilename = filenameNoExt.replace(/[^a-zA-Z0-9 \-_]/g, '').trim();
                     if (!safeFilename) safeFilename = `Optimized_Doc_${i+1}`;
                     
-                    // Windows Policy Fix 2: 'unixPermissions: "644"' যুক্ত করা হয়েছে। 
-                    // এটি উইন্ডোজকে ১০০% সিউরিটি দেয় যে এটি একটি ডকুমেন্ট ফাইল, কোনো এক্সিকিউটেবল বা ভাইরাস নয়।
                     zip.file(`${safeFilename}_Micro.pdf`, pdfBytes, { 
                         binary: true, 
                         date: new Date(),
@@ -502,19 +523,17 @@
                 
                 statusDiv.innerText = 'Creating ZIP Archive...';
                 
-                // Windows Policy Fix 3: কম্প্রেশন 'STORE' করা হয়েছে। 
-                // পিডিএফ নিজে থেকেই কম্প্রেসড থাকে। JSZip দিয়ে একে DEFLATE করলে এর ডেটা স্ট্রাকচার ম্যালওয়্যারের মতো দেখতে লাগে। 
-                // STORE মোড ব্যবহার করলে উইন্ডোজ ডিফেন্ডার হুবহু আপনার Single Merge-এর মতো ক্লিন ফাইল দেখতে পাবে।
                 const zipUint8 = await zip.generateAsync({ 
                     type: "uint8array",
                     compression: "STORE" 
                 });
                 
                 const zipBlob = new Blob([zipUint8], { type: "application/zip" });
-                const url = URL.createObjectURL(zipBlob);
                 
-                downloadLink.href = url;
-                downloadLink.download = `Optimized_Micro_PDFs.zip`;
+                // Store global state for UI actions
+                finalOutputUrl = URL.createObjectURL(zipBlob);
+                finalOutputFilename = `Optimized_Micro_PDFs.zip`;
+                finalOutputType = 'zip';
                 
             } else if (mode === 'merge') {
                 statusDiv.style.color = 'var(--primary)';
@@ -531,10 +550,8 @@
                     const copiedPages = await mergedPdf.copyPages(sourcePdf, sourcePdf.getPageIndices());
                     copiedPages.forEach(p => mergedPdf.addPage(p));
                     
-                    // ODD TO EVEN PADDING ALGORITHM
                     if (T % 2 === 1) {
                         const lastPageSize = pages[pages.length - 1].getSize();
-                        // Injecting a safe blank page for AntiVirus
                         createSafeBlankPage(mergedPdf, lastPageSize.width, lastPageSize.height);
                     }
                 }
@@ -542,17 +559,27 @@
                 statusDiv.innerText = `Optimizing fully merged document...`;
                 
                 const finalPdfBytes = await generateMicroPDFBytes(mergedPdf, "Merged_Document");
-                
                 const blob = new Blob([finalPdfBytes], { type: "application/pdf" });
-                const url = URL.createObjectURL(blob);
                 
-                downloadLink.href = url;
-                downloadLink.download = `Merged_SmartFit_Micro.pdf`;
+                // Store global state for UI actions
+                finalOutputUrl = URL.createObjectURL(blob);
+                finalOutputFilename = `Merged_SmartFit_Micro.pdf`;
+                finalOutputType = 'pdf';
             }
 
-            downloadLink.style.display = 'block';
+            // Display success and relevant buttons
             statusDiv.style.color = 'green';
-            statusDiv.innerText = 'Success! File(s) perfectly generated.';
+            statusDiv.innerText = 'Success! Document successfully processed.';
+            
+            actionBar.style.display = 'grid';
+            if(finalOutputType === 'zip') {
+                // Cannot print a ZIP file directly from browser
+                printBtn.style.display = 'none';
+                actionBar.style.gridTemplateColumns = '1fr'; 
+            } else {
+                printBtn.style.display = 'block';
+                actionBar.style.gridTemplateColumns = '1fr 1fr';
+            }
 
         } catch (error) {
             console.error("PDF Processing Error:", error);
@@ -561,6 +588,35 @@
         } finally {
             convertBtn.disabled = false;
         }
+    }
+
+    // Output Triggers
+    function triggerDownload() {
+        if (!finalOutputUrl) return;
+        const a = document.createElement('a');
+        a.href = finalOutputUrl;
+        a.download = finalOutputFilename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    function triggerPrint() {
+        if (!finalOutputUrl || finalOutputType !== 'pdf') return;
+        
+        // Creating an invisible iframe to handle printing gracefully
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = finalOutputUrl;
+        document.body.appendChild(iframe);
+        
+        // Wait for PDF to load into iframe before calling print
+        iframe.onload = function() {
+            setTimeout(function() {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+            }, 500); // Small delay to ensure PDF is fully rendered in memory
+        };
     }
 
     async function generateMicroPDFBytes(originalPdf, filenameNoExt) {
