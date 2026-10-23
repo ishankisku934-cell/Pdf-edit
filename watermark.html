@@ -1,0 +1,603 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Watermark Studio — Unicode PDF</title>
+
+<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="https://unpkg.com/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
+
+<style>
+:root {
+  --bg:#0b1020;--panel:#121a2d;--field:#0b1324;
+  --border:#2a3853;--text:#edf3ff;--muted:#9eacc3;
+  --accent:#79a8ff;--green:#55d9a0;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,sans-serif}
+header{padding:22px 5%;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px}
+.brand{font-size:21px;font-weight:800}.brand span{color:var(--accent)}
+.tag{font-size:11px;color:var(--green);border:1px solid #285c49;border-radius:20px;padding:7px 11px}
+main{max-width:1450px;margin:auto;padding:30px 20px 50px}
+.hero{margin-bottom:25px}.hero h1{font-size:clamp(28px,4vw,42px);margin:0 0 10px}
+.hero h1 span{background:linear-gradient(90deg,#79a8ff,#b09aff);color:transparent;background-clip:text}
+.hero p{color:var(--muted);line-height:1.7;font-size:14px}
+.workspace{display:grid;grid-template-columns:minmax(290px,420px) minmax(0,1fr);gap:20px;align-items:start}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:15px;overflow:hidden}
+.panel-head{padding:18px 20px;border-bottom:1px solid var(--border);font-weight:bold;display:flex;justify-content:space-between;gap:10px}
+.panel-body{padding:20px}
+.section-title{color:var(--accent);font-size:11px;font-weight:bold;letter-spacing:1px;margin:25px 0 14px}
+.section-title:first-child{margin-top:0}
+.field{margin-bottom:15px}
+label{display:block;font-size:12px;font-weight:600;color:#cbd6e8;margin-bottom:8px}
+input,select,textarea{width:100%;min-width:0;padding:11px;background:var(--field);color:var(--text);border:1px solid var(--border);border-radius:8px;font:inherit;font-size:13px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+input[type=color]{height:42px;padding:4px}
+input[type=range]{padding:0;border:0;accent-color:var(--accent)}
+input[type=checkbox]{width:auto}
+input[type=file]{padding:8px}
+.row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.inline-color{display:grid;grid-template-columns:48px 1fr;gap:9px}
+.range-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.range-head label{margin:0}
+.range-value{font-size:12px;color:var(--accent);font-weight:bold}
+.checks{display:flex;flex-wrap:wrap;gap:15px;margin:12px 0}
+.checks label{display:flex;align-items:center;gap:7px;margin:0;font-weight:normal}
+.muted{color:var(--muted);font-size:11px;line-height:1.6}
+.dropzone{display:block;text-align:center;padding:20px 12px;border:1px dashed #4a648a;border-radius:10px;background:var(--field);cursor:pointer}
+.dropzone:hover{border-color:var(--accent)}
+.dropzone .symbol{font-size:28px;margin-bottom:8px}
+.dropzone strong{display:block;font-size:13px;margin-bottom:6px}
+.dropzone small{color:var(--muted);font-size:11px}
+.file-name{color:var(--green);font-size:12px;overflow-wrap:anywhere;margin:10px 0}
+button{cursor:pointer;background:#19243a;color:var(--text);border:1px solid var(--border);border-radius:8px;padding:12px 14px;font-size:12px;font-weight:bold}
+button:hover{border-color:var(--accent)}
+button:disabled{opacity:.5;cursor:not-allowed}
+.primary{background:linear-gradient(110deg,#538cf4,#8465ed);border:0;color:white}
+.actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+.actions button{flex:1}
+.status{display:none;padding:12px;border-radius:8px;margin-top:13px;font-size:12px;line-height:1.6;overflow-wrap:anywhere}
+.status.show{display:block}.status.info{background:#172a45;color:#b6d3ff}
+.status.success{background:#12352a;color:#8debc1}.status.error{background:#3b1b25;color:#ffabb5}
+.preview-area{padding:20px;background:radial-gradient(ellipse at top,#192744,#10182a)}
+.preview-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+.preview-top strong{font-size:14px}.preview-top span{color:var(--muted);font-size:11px}
+.paper-wrap{min-height:400px;padding:18px;display:flex;justify-content:center;align-items:flex-start;background:#0b1220;border:1px solid var(--border);border-radius:10px;overflow:auto}
+.paper{position:relative;width:min(100%,450px);aspect-ratio:210/297;background:white;color:#242b38;overflow:hidden;box-shadow:0 12px 35px #0005}
+.paper-content{position:absolute;inset:9%;font-family:Georgia,serif;font-size:10px;line-height:1.7;overflow:hidden}
+.paper-content h3{text-align:center;font-size:18px;margin-top:22px}
+.line{height:5px;background:#e3e7ec;border-radius:4px;margin:11px 0}
+.watermark-layer{position:absolute;inset:0;pointer-events:none}
+.watermark-item{position:absolute;white-space:pre;line-height:1.2;transform-origin:center}
+footer{border-top:1px solid var(--border);padding:20px;text-align:center;color:var(--muted);font-size:11px;line-height:1.8}
+@media(max-width:900px){.workspace{grid-template-columns:1fr}}
+@media(max-width:480px){main{padding:20px 10px 35px}header{padding:16px 12px}.brand{font-size:17px}.panel-body{padding:14px}.preview-area{padding:12px}.paper-wrap{padding:8px}}
+</style>
+</head>
+
+<body>
+<header>
+  <div class="brand">WATERMARK<span>.STUDIO</span></div>
+  <div class="tag">UNICODE PDF CUSTOMISER</div>
+</header>
+
+<main>
+<section class="hero">
+  <h1>Make your PDF <span>uniquely yours.</span></h1>
+  <p>Custom watermarks, Unicode typography, Gothic text, colours, opacity, transparency, rotation and PDF export.</p>
+</section>
+
+<div class="workspace">
+<section class="panel">
+<div class="panel-head"><span>Watermark settings</span><span class="muted">01 / DESIGN</span></div>
+<div class="panel-body">
+
+<div class="section-title">01 — Upload PDF</div>
+<label class="dropzone" id="dropzone" for="pdfFile">
+  <div class="symbol">↥</div><strong>Choose a PDF document</strong>
+  <small>Click to browse or drag and drop</small>
+</label>
+<input id="pdfFile" type="file" accept=".pdf,application/pdf" hidden>
+<div id="fileName" class="file-name">No PDF selected</div>
+
+<div class="section-title">02 — Watermark content</div>
+<div class="field">
+<label for="watermarkText">Watermark text</label>
+<textarea id="watermarkText" rows="3">𝕯𝖍𝖚𝖗𝖆𝖓𝖉𝖍𝖆𝖗 EE</textarea>
+</div>
+
+<div class="field">
+<label for="fontFamily">PDF font</label>
+<select id="fontFamily">
+  <option value="Helvetica">Helvetica — standard characters</option>
+  <option value="TimesRoman">Times Roman — standard characters</option>
+  <option value="Courier">Courier — standard characters</option>
+  <option value="custom" selected>Uploaded Unicode font</option>
+</select>
+<p class="muted">Gothic/Fraktur mathematical Unicode characters require an embedded font that contains those glyphs. Upload a compatible TTF/OTF file.</p>
+</div>
+
+<div class="field">
+<label for="fontFile">Upload Unicode font (.ttf / .otf)</label>
+<input id="fontFile" type="file" accept=".ttf,.otf">
+<div id="fontFileName" class="muted">No custom font loaded</div>
+</div>
+
+<div class="checks">
+<label><input id="bold" type="checkbox" checked> Bold</label>
+<label><input id="italic" type="checkbox"> Italic</label>
+<label><input id="underline" type="checkbox"> Underline</label>
+</div>
+
+<div class="row">
+<div class="field"><label for="fontSize">Font size (pt)</label><input id="fontSize" type="number" min="4" max="200" value="42"></div>
+<div class="field"><label for="alignment">Alignment</label>
+<select id="alignment"><option value="center">Centre</option><option value="left">Left</option><option value="right">Right</option></select></div>
+</div>
+
+<div class="section-title">03 — Colour and effects</div>
+<div class="field">
+<label>Watermark colour</label>
+<div class="inline-color"><input id="colorPicker" type="color" value="#777777"><input id="colorHex" value="#777777" maxlength="7" aria-label="HEX colour"></div>
+</div>
+
+<div class="field">
+<div class="range-head"><label for="opacity">Opacity</label><span id="opacityValue" class="range-value">75%</span></div>
+<input id="opacity" type="range" min="0" max="100" value="75">
+<div class="muted">100% = fully opaque.</div>
+</div>
+
+<div class="field">
+<div class="range-head"><label for="transparency">Transparency</label><span id="transparencyValue" class="range-value">25%</span></div>
+<input id="transparency" type="range" min="0" max="100" value="25">
+<div class="muted">100% = invisible. Both controls are synchronised.</div>
+</div>
+
+<div class="field">
+<div class="range-head"><label for="rotation">Rotation</label><span id="rotationValue" class="range-value">-35°</span></div>
+<input id="rotation" type="range" min="-180" max="180" value="-35">
+</div>
+
+<div class="section-title">04 — Position and layout</div>
+<div class="field">
+<label for="position">Watermark position</label>
+<select id="position">
+<option value="center">Centre</option><option value="topLeft">Top left</option><option value="topCenter">Top centre</option><option value="topRight">Top right</option><option value="middleLeft">Middle left</option><option value="middleRight">Middle right</option><option value="bottomLeft">Bottom left</option><option value="bottomCenter">Bottom centre</option><option value="bottomRight">Bottom right</option><option value="tile">Tiled / repeated</option><option value="custom">Custom coordinates</option>
+</select>
+</div>
+
+<div id="customCoordinates" style="display:none">
+<div class="row">
+<div class="field"><label for="posX">X coordinate (pt)</label><input id="posX" type="number" min="0" value="200"></div>
+<div class="field"><label for="posY">Y coordinate (pt)</label><input id="posY" type="number" min="0" value="350"></div>
+</div>
+<p class="muted">Origin: bottom-left corner of the PDF page.</p>
+</div>
+
+<div class="row">
+<div class="field"><label for="margin">Edge margin (pt)</label><input id="margin" type="number" min="0" max="500" value="35"></div>
+<div class="field"><label for="spacing">Tile spacing (pt)</label><input id="spacing" type="number" min="20" max="1000" value="170"></div>
+</div>
+
+<div class="section-title">05 — Page selection</div>
+<div class="field">
+<label for="pageMode">Apply watermark to</label>
+<select id="pageMode"><option value="all">All pages</option><option value="range">Selected page range</option></select>
+</div>
+<div id="pageRange" class="row" style="display:none">
+<div class="field"><label for="startPage">First page</label><input id="startPage" type="number" min="1" value="1"></div>
+<div class="field"><label for="endPage">Last page</label><input id="endPage" type="number" min="1" value="1"></div>
+</div>
+
+<div class="actions">
+<button id="resetBtn" type="button">Reset settings</button>
+<button id="generateBtn" class="primary" type="button">Generate PDF</button>
+</div>
+<div id="status" class="status" role="status" aria-live="polite"></div>
+<p class="muted">Your document is processed locally in the browser. External libraries load from a CDN.</p>
+</div>
+</section>
+
+<section class="panel">
+<div class="panel-head"><span>Live design preview</span><span class="muted">02 / PREVIEW</span></div>
+<div class="preview-area">
+<div class="preview-top"><strong>Watermark appearance</strong><span id="previewInfo">Illustrative A4 page</span></div>
+<div class="paper-wrap">
+<div class="paper" id="paper">
+<div class="paper-content">
+<h3>DOCUMENT PREVIEW</h3><p style="text-align:center">Document title and introduction</p>
+<div class="line"></div><div class="line" style="width:91%"></div><div class="line" style="width:96%"></div><div class="line" style="width:85%"></div>
+<p style="margin-top:27px"><b>Section 1 — Introduction</b></p>
+<div class="line"></div><div class="line" style="width:94%"></div><div class="line" style="width:88%"></div><div class="line" style="width:97%"></div>
+<p style="margin-top:27px"><b>Section 2 — Details</b></p>
+<div class="line"></div><div class="line" style="width:91%"></div><div class="line" style="width:86%"></div><div class="line" style="width:96%"></div>
+</div>
+<div id="watermarkLayer" class="watermark-layer"></div>
+</div>
+</div>
+<div class="actions"><button id="clearBtn" type="button">Clear PDF</button><button id="downloadBtn" class="primary" type="button" disabled>Download PDF</button></div>
+<div id="downloadStatus" class="status" role="status" aria-live="polite"></div>
+</div>
+</section>
+</div>
+</main>
+
+<footer>WATERMARK.STUDIO — PDF watermark customisation tool.<br>Keep an original copy of important documents.</footer>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+
+const defaults={
+  watermarkText:"𝕯𝖍𝖚𝖗𝖆𝖓𝖉𝖍𝖆𝖗 EE",
+  fontFamily:"custom",bold:true,italic:false,underline:false,
+  fontSize:42,alignment:"center",colorPicker:"#777777",
+  opacity:75,transparency:25,rotation:-35,position:"center",
+  margin:35,spacing:170,pageMode:"all",startPage:1,endPage:1,posX:200,posY:350
+};
+
+let selectedPdf=null,selectedFont=null,outputBlob=null,pageCount=0,operationId=0;
+
+function setStatus(id,message,type="info"){
+  const el=$(id);el.textContent=message;el.className="status show "+type;
+}
+function clearStatus(id){$(id).textContent="";$(id).className="status";}
+function num(id,fallback,min,max){
+  const n=Number($(id).value);
+  return Number.isFinite(n)?Math.max(min,Math.min(max,n)):fallback;
+}
+function validHex(s){return /^#[0-9a-fA-F]{6}$/.test(s);}
+
+function getSettings(){
+  return {
+    text:$("watermarkText").value,
+    fontFamily:$("fontFamily").value,
+    bold:$("bold").checked,italic:$("italic").checked,
+    underline:$("underline").checked,
+    fontSize:num("fontSize",42,4,200),
+    alignment:$("alignment").value,
+    color:$("colorPicker").value,
+    opacity:num("opacity",75,0,100)/100,
+    rotation:num("rotation",-35,-180,180),
+    position:$("position").value,
+    margin:num("margin",35,0,500),
+    spacing:num("spacing",170,20,1000),
+    posX:num("posX",200,0,10000000),
+    posY:num("posY",350,0,10000000)
+  };
+}
+
+function updateOpacity(value){
+  const o=Math.max(0,Math.min(100,Number(value)||0));
+  $("opacity").value=o;$("transparency").value=100-o;
+  $("opacityValue").textContent=o+"%";
+  $("transparencyValue").textContent=(100-o)+"%";
+  renderPreview();
+}
+$("opacity").addEventListener("input",()=>updateOpacity($("opacity").value));
+$("transparency").addEventListener("input",()=>updateOpacity(100-Number($("transparency").value)));
+
+$("colorPicker").addEventListener("input",()=>{
+  $("colorHex").value=$("colorPicker").value.toUpperCase();renderPreview();
+});
+$("colorHex").addEventListener("input",()=>{
+  const v=$("colorHex").value.trim();
+  if(validHex(v)){$("colorPicker").value=v;renderPreview();}
+});
+$("rotation").addEventListener("input",()=>{
+  $("rotationValue").textContent=$("rotation").value+"°";renderPreview();
+});
+$("position").addEventListener("change",()=>{
+  $("customCoordinates").style.display=$("position").value==="custom"?"block":"none";
+  renderPreview();
+});
+$("pageMode").addEventListener("change",()=>{
+  $("pageRange").style.display=$("pageMode").value==="range"?"grid":"none";
+});
+["watermarkText","fontFamily","bold","italic","underline","fontSize","alignment","margin","spacing","posX","posY"].forEach(id=>{
+  $(id).addEventListener("input",renderPreview);
+  $(id).addEventListener("change",renderPreview);
+});
+
+function previewFamily(s){
+  if(s.fontFamily==="custom")return `"${selectedFont?.family||"Arial"}",sans-serif`;
+  if(s.fontFamily==="TimesRoman")return "Georgia,serif";
+  if(s.fontFamily==="Courier")return "monospace";
+  return "Arial,sans-serif";
+}
+
+function renderPreview(){
+  const s=getSettings(),layer=$("watermarkLayer");
+  layer.replaceChildren();
+  const paper=$("paper"),w=paper.clientWidth||450,h=paper.clientHeight||636,scale=w/595.28;
+  $("opacityValue").textContent=Math.round(s.opacity*100)+"%";
+  $("transparencyValue").textContent=100-Math.round(s.opacity*100)+"%";
+
+  function add(x,y){
+    const el=document.createElement("div");
+    el.className="watermark-item";el.textContent=s.text;
+    el.style.left=x+"px";el.style.top=y+"px";
+    el.style.transform=`translate(-50%,-50%) rotate(${s.rotation}deg)`;
+    el.style.fontFamily=previewFamily(s);
+    el.style.fontSize=Math.max(4,s.fontSize*scale)+"px";
+    el.style.fontWeight=s.bold?"700":"400";
+    el.style.fontStyle=s.italic?"italic":"normal";
+    el.style.textDecoration=s.underline?"underline":"none";
+    el.style.opacity=s.opacity;el.style.color=s.color;
+    layer.appendChild(el);
+  }
+
+  const m=s.margin*scale;
+  const pos={
+    center:[w/2,h/2],topLeft:[m,m],topCenter:[w/2,m],topRight:[w-m,m],
+    middleLeft:[m,h/2],middleRight:[w-m,h/2],
+    bottomLeft:[m,h-m],bottomCenter:[w/2,h-m],bottomRight:[w-m,h-m],
+    custom:[s.posX*scale,h-s.posY*scale]
+  };
+  if(s.position==="tile"){
+    const gap=s.spacing*scale;let count=0;
+    for(let y=-gap;y<h+gap&&count<400;y+=gap)
+      for(let x=-gap;x<w+gap&&count<400;x+=gap){add(x,y);count++;}
+  }else{
+    const [x,y]=pos[s.position]||pos.center;add(x,y);
+  }
+  $("previewInfo").textContent=selectedPdf?`${pageCount} page(s) loaded`:"Illustrative A4 page";
+}
+
+async function loadPdf(file){
+  const id=++operationId;clearStatus("status");clearStatus("downloadStatus");
+  if(!file||(!file.name.toLowerCase().endsWith(".pdf")&&file.type!=="application/pdf")){
+    setStatus("status","Please select a PDF file.","error");return;
+  }
+  selectedPdf=null;outputBlob=null;$("downloadBtn").disabled=true;
+  setStatus("status","Validating PDF...","info");
+  try{
+    const bytes=new Uint8Array(await file.arrayBuffer());
+    const doc=await PDFLib.PDFDocument.load(bytes.slice(),{updateMetadata:false});
+    if(id!==operationId)return;
+    selectedPdf={name:file.name,bytes};pageCount=doc.getPageCount();
+    $("fileName").textContent=`${file.name} — ${pageCount} page(s)`;
+    $("startPage").value=1;$("endPage").value=pageCount;
+    setStatus("status","PDF loaded successfully.","success");renderPreview();
+  }catch(e){
+    if(id!==operationId)return;
+    selectedPdf=null;setStatus("status","Cannot open PDF: "+e.message,"error");
+  }
+}
+
+$("pdfFile").addEventListener("change",e=>{if(e.target.files[0])loadPdf(e.target.files[0]);});
+$("dropzone").addEventListener("dragover",e=>{e.preventDefault();$("dropzone").style.borderColor="var(--accent)";});
+$("dropzone").addEventListener("dragleave",()=>$("dropzone").style.borderColor="");
+$("dropzone").addEventListener("drop",e=>{
+  e.preventDefault();$("dropzone").style.borderColor="";
+  if(e.dataTransfer.files[0])loadPdf(e.dataTransfer.files[0]);
+});
+
+$("fontFile").addEventListener("change",async e=>{
+  const file=e.target.files[0];if(!file)return;
+  selectedFont=null;
+  const ext=file.name.split(".").pop().toLowerCase();
+  if(!["ttf","otf"].includes(ext)){
+    $("fontFileName").textContent="Use TTF or OTF font.";
+    setStatus("status","Only TTF and OTF fonts are supported.","error");return;
+  }
+  try{
+    if(typeof fontkit==="undefined")throw new Error("Fontkit failed to load. Check your internet connection.");
+    const bytes=new Uint8Array(await file.arrayBuffer());
+    const parsed=fontkit.create(bytes);
+    selectedFont={bytes,family:parsed.familyName||file.name};
+    $("fontFamily").value="custom";
+    $("fontFileName").textContent=`Loaded: ${file.name} (${selectedFont.family})`;
+    setStatus("status","Custom font loaded. Its glyph coverage will be checked during export.","success");
+    renderPreview();
+  }catch(err){
+    selectedFont=null;$("fontFileName").textContent="Could not load font.";
+    setStatus("status","Font error: "+err.message,"error");
+  }
+});
+
+function standardFontName(s){
+  if(s.fontFamily==="TimesRoman"){
+    if(s.bold&&s.italic)return PDFLib.StandardFonts.TimesRomanBoldItalic;
+    if(s.bold)return PDFLib.StandardFonts.TimesRomanBold;
+    if(s.italic)return PDFLib.StandardFonts.TimesRomanItalic;
+    return PDFLib.StandardFonts.TimesRoman;
+  }
+  if(s.fontFamily==="Courier"){
+    if(s.bold&&s.italic)return PDFLib.StandardFonts.CourierBoldOblique;
+    if(s.bold)return PDFLib.StandardFonts.CourierBold;
+    if(s.italic)return PDFLib.StandardFonts.CourierOblique;
+    return PDFLib.StandardFonts.Courier;
+  }
+  if(s.bold&&s.italic)return PDFLib.StandardFonts.HelveticaBoldOblique;
+  if(s.bold)return PDFLib.StandardFonts.HelveticaBold;
+  if(s.italic)return PDFLib.StandardFonts.HelveticaOblique;
+  return PDFLib.StandardFonts.Helvetica;
+}
+function pdfColor(hex){
+  const v=hex.slice(1);
+  return PDFLib.rgb(parseInt(v.slice(0,2),16)/255,parseInt(v.slice(2,4),16)/255,parseInt(v.slice(4,6),16)/255);
+}
+
+/* Check that the uploaded font contains every non-whitespace glyph. */
+function checkGlyphs(text){
+  const parsed=fontkit.create(selectedFont.bytes);
+  const missing=[...new Set([...text].filter(ch=>{
+    if(/\s/u.test(ch))return false;
+    return parsed.glyphForCodePoint(ch.codePointAt(0)).id===0;
+  }))];
+  if(missing.length){
+    throw new Error("This font lacks these characters: "+missing.slice(0,15).join(" ")+
+      ". Upload a font containing Mathematical Alphanumeric Symbols / Fraktur glyphs.");
+  }
+}
+
+function drawWatermark(page,font,s,x,y,alignment="center"){
+  const lines=s.text.split(/\r?\n/),size=s.fontSize;
+  const lineHeight=size*1.25,blockHeight=lines.length*lineHeight;
+  const firstY=y+(blockHeight-lineHeight)/2,colour=pdfColor(s.color);
+  const rotation=PDFLib.degrees(s.rotation),angle=s.rotation*Math.PI/180;
+
+  lines.forEach((line,index)=>{
+    const width=font.widthOfTextAtSize(line,size);
+    let drawX=x;
+    if(alignment==="center")drawX=x-width/2;
+    if(alignment==="right")drawX=x-width;
+    const baseline=firstY-index*lineHeight;
+
+    page.drawText(line,{
+      x:drawX,y:baseline,size,font,color:colour,
+      opacity:s.opacity,rotate:rotation
+    });
+
+    if(s.underline&&line.length){
+      const uy=baseline-Math.max(1,size*.08);
+      const cos=Math.cos(angle),sin=Math.sin(angle);
+      const x1=x+(drawX-x)*cos-(uy-y)*sin;
+      const y1=y+(drawX-x)*sin+(uy-y)*cos;
+      const x2=x+(drawX+width-x)*cos-(uy-y)*sin;
+      const y2=y+(drawX+width-x)*sin+(uy-y)*cos;
+      page.drawLine({
+        start:{x:x1,y:y1},end:{x:x2,y:y2},
+        thickness:Math.max(.5,size*.035),color:colour,opacity:s.opacity
+      });
+    }
+  });
+}
+
+function getPosition(page,s){
+  const w=page.getWidth(),h=page.getHeight(),m=s.margin;
+  const positions={
+    center:[w/2,h/2],topLeft:[m,h-m],topCenter:[w/2,h-m],topRight:[w-m,h-m],
+    middleLeft:[m,h/2],middleRight:[w-m,h/2],
+    bottomLeft:[m,m],bottomCenter:[w/2,m],bottomRight:[w-m,m],
+    custom:[Math.min(w,s.posX),Math.min(h,s.posY)]
+  };
+  return positions[s.position]||positions.center;
+}
+function drawTiled(page,font,s){
+  const w=page.getWidth(),h=page.getHeight(),gap=s.spacing;
+  let count=0;
+  for(let y=-gap;y<=h+gap&&count<5000;y+=gap)
+    for(let x=-gap;x<=w+gap&&count<5000;x+=gap){
+      drawWatermark(page,font,s,x,y,"center");count++;
+    }
+}
+
+function validate(s){
+  if(!s.text.trim())throw new Error("Enter watermark text.");
+  if(!validHex(s.color))throw new Error("Enter a valid HEX colour.");
+  if(s.position==="tile"&&s.spacing<20)throw new Error("Tile spacing must be at least 20 points.");
+
+  if($("pageMode").value==="range"){
+    const start=Number($("startPage").value),end=Number($("endPage").value);
+    if(!Number.isInteger(start)||!Number.isInteger(end)||start<1||end<start||end>pageCount)
+      throw new Error(`Enter a page range between 1 and ${pageCount}.`);
+  }
+
+  if(s.fontFamily==="custom"){
+    if(!selectedFont)throw new Error("Upload a Unicode TTF/OTF font first.");
+    checkGlyphs(s.text);
+  }else{
+    for(const ch of s.text){
+      if(ch.codePointAt(0)>255){
+        throw new Error(`The character "${ch}" is not supported by standard PDF fonts. Upload a Unicode font and select Uploaded Unicode font.`);
+      }
+    }
+  }
+}
+
+async function generatePdf(){
+  if(!selectedPdf){setStatus("status","Please upload a PDF first.","error");return;}
+  const id=++operationId;
+  $("generateBtn").disabled=true;$("downloadBtn").disabled=true;outputBlob=null;
+
+  try{
+    const s=getSettings();validate(s);
+    setStatus("status","Preparing PDF and embedding font...","info");
+    const doc=await PDFLib.PDFDocument.load(selectedPdf.bytes.slice(),{updateMetadata:false});
+    if(id!==operationId)return;
+
+    let font;
+    if(s.fontFamily==="custom"){
+      if(typeof fontkit==="undefined")throw new Error("Fontkit is unavailable.");
+      doc.registerFontkit(fontkit);
+      font=await doc.embedFont(selectedFont.bytes,{subset:true});
+    }else{
+      font=await doc.embedFont(standardFontName(s));
+    }
+
+    if(id!==operationId)return;
+    const pages=doc.getPages();
+    let first=0,last=pages.length-1;
+    if($("pageMode").value==="range"){
+      first=Number($("startPage").value)-1;
+      last=Number($("endPage").value)-1;
+    }
+
+    for(let i=first;i<=last;i++){
+      if(id!==operationId)return;
+      const page=pages[i];
+      if(s.position==="tile")drawTiled(page,font,s);
+      else{
+        const [x,y]=getPosition(page,s);
+        drawWatermark(page,font,s,x,y,s.alignment);
+      }
+    }
+
+    setStatus("status","Generating final PDF...","info");
+    const bytes=await doc.save();
+    if(id!==operationId)return;
+
+    outputBlob=new Blob([bytes],{type:"application/pdf"});
+    $("downloadBtn").disabled=false;
+    setStatus("status",`PDF generated. Watermark applied to ${last-first+1} page(s).`,"success");
+    setStatus("downloadStatus",`Ready: ${outputName(selectedPdf.name)} (${formatBytes(outputBlob.size)})`,"success");
+  }catch(err){
+    if(id!==operationId)return;
+    console.error(err);
+    setStatus("status","Could not generate PDF: "+err.message,"error");
+  }finally{
+    if(id===operationId)$("generateBtn").disabled=false;
+  }
+}
+
+function outputName(name){return name.replace(/\.pdf$/i,"")+"_watermarked.pdf";}
+function formatBytes(n){
+  if(n<1024)return n+" B";
+  if(n<1048576)return (n/1024).toFixed(1)+" KB";
+  return (n/1048576).toFixed(2)+" MB";
+}
+
+$("generateBtn").addEventListener("click",generatePdf);
+$("downloadBtn").addEventListener("click",()=>{
+  if(!outputBlob||!selectedPdf)return;
+  const url=URL.createObjectURL(outputBlob),a=document.createElement("a");
+  a.href=url;a.download=outputName(selectedPdf.name);
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+  setStatus("downloadStatus","Download started. Check your downloads folder.","success");
+});
+$("clearBtn").addEventListener("click",()=>{
+  operationId++;selectedPdf=null;outputBlob=null;pageCount=0;
+  $("pdfFile").value="";$("fileName").textContent="No PDF selected";
+  $("downloadBtn").disabled=true;clearStatus("status");clearStatus("downloadStatus");renderPreview();
+});
+$("resetBtn").addEventListener("click",()=>{
+  Object.entries(defaults).forEach(([id,value])=>{
+    const el=$(id);if(!el)return;
+    if(el.type==="checkbox")el.checked=value;else el.value=value;
+  });
+  selectedFont=null;$("fontFile").value="";
+  $("fontFileName").textContent="No custom font loaded";
+  $("customCoordinates").style.display="none";$("pageRange").style.display="none";
+  $("colorHex").value="#777777";$("rotationValue").textContent="-35°";
+  updateOpacity(75);clearStatus("status");renderPreview();
+});
+
+renderPreview();
+</script>
+</body>
+</html>
